@@ -1,0 +1,112 @@
+
+resources:
+  kali1:                                        # Object name, can be anything and is used to refer to this object from elsewhere
+    type: node                                  # Required, [node, router, config, vulnerability]
+    properties:
+      name: 01-kali1-group01                    # Required
+      flavor: m1.medium                         # Required
+      os: Kali Linux 2018.3a xfce amd64         # Required
+      key: id_testkey                           # Required
+      floating_IP: true                         # Optional, default=false
+      networkA:                                 # Add networkB, networkC and so on for every network the node is connected to
+        - router: router01                      # Required - use object name
+        - subnet: subnetA                       # Required - subnet must exist in the router object
+        
+  
+  kali2:                                        # Object name, can be anything 
+    type: node                                  # Required
+    properties:
+      name: 01-kali2-group01                    # Required
+      flavor: m1.medium                         # Required
+      os: Kali Linux 2018.3a xfce amd64         # Required
+      key: id_testkey                           # Required
+      floatingIP: true                          # Optional, default=false
+      networkA: 
+        - router: router01                      # Required
+        - subnet: subnetA                       # Required
+
+  kali3:
+    type: node                                  # Required
+    properties:
+      name: 01-kali3-group01                    # Required
+      flavor: m1.medium                         # Required
+      os: Kali Linux 2018.3a xfce amd64         # Required
+      key: id_testkey                           # Required
+      floatingIP: true                          # Optional, default=false
+      networkA: 
+        - router: router01                      # Required
+        - subnet: subnetA                       # Required
+
+  windows7:
+    type: node                                  # Required
+    properties:
+      name: win7x64-group01                     # Required
+      flavor: m1.small                          # Required
+      os: Win7x64                               # Required
+      key: id_testkey                           # Required
+      floatingIP: true                          # Optional, default=false
+      networkA: 
+        - router: router01                      # Required
+        - subnet: subnetB      # LAN            # Required
+
+  fileserver:
+    type: node
+    properties:
+      name: Fileserver-group01                  # Required
+      flavor: m1.medium                         # Required
+      os: Fileserver-groupX                     # Required
+      key: id_testkey                           # Required
+      floatingIP: true                          # Optional, default=false
+      networkA: 
+        - router: router01                      # Required
+        - subnet: subnetB      # LAN            # Required
+
+  domaincontroller:
+    type: node
+    properties:
+      name: DC2008r2-group01                    # Required
+      flavor: m1.medium                         # Required
+      os: DC2008r2-groupX                       # Required
+      key: id_testkey                           # Required
+      floatingIP: true                          # Optional, default=false
+      networkA: 
+        - router: router01                      # Required
+        - subnet: subnetB      # LAN            # Required
+
+  baselserver:
+    type: node
+    properties:
+      name: Baselgroup01                        # Required
+      flavor: m1.medium                         # Required
+      os: BaselVulnVm2                          # Required
+      key: id_testkey                           # Required
+      floatingIP: false                         # Optional, default=false
+      networkA: 
+        - router: router01                      # Required
+        - subnet: subnetA      # LAN            # Required
+
+  router01:
+    type: router                                # Required
+    properties:
+      name: router01                            # Required
+      networks:
+      - subnetA:
+          name: group01-dmz                     # Required
+          cidr: 192.168.1.0/24                  # Required
+          gatewayIP: 192.168.1.1                # Optional, set automatically if not specified
+      - subnetB:
+          name: group01-lan                     # Required
+          cidr: 10.0.1.0/24
+  
+  config_preset01:
+    type: config                                # Required
+    properties:
+      name: preset_name                         # Required
+      filename: test_config.yaml                # Required
+
+  vulnerability01:
+    type: vulnerability                         # Required
+    properties:
+      name: vulnerability_name                  # Required - 
+      type: some_type                           # Required - describes the type of vulnerability, e.g privesc, RCE, DOS, 
+      source: local                             # Required - local=manually created with ansible, other remote options could be exploitdb etc.
