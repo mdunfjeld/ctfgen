@@ -1,14 +1,14 @@
 
 resources:
   kali1:                                        # Object name, can be anything and is used to refer to this object from elsewhere
-    type: node                                  # Required
+    type: node                                  # Required, [node, router, config, vulnerability]
     properties:
       name: 01-kali1-group01                    # Required
       flavor: m1.medium                         # Required
       os: Kali Linux 2018.3a xfce amd64         # Required
       key: id_testkey                           # Required
       floating_IP: true                         # Optional, default=false
-      networkA: 
+      networkA:                                 # Add networkB, networkC and so on for every network the node is connected to
         - router: router01                      # Required - use object name
         - subnet: subnetA                       # Required - subnet must exist in the router object
         
@@ -86,9 +86,9 @@ resources:
         - subnet: subnetA      # LAN            # Required
 
   router01:
-    type: router
+    type: router                                # Required
     properties:
-      name: router01
+      name: router01                            # Required
       networks:
       - subnetA:
           name: group01-dmz                     # Required
@@ -98,15 +98,15 @@ resources:
           name: group01-lan                     # Required
           cidr: 10.0.1.0/24
   
-
-
   config_preset01:
-    type: config
+    type: config                                # Required
     properties:
-      name: preset_name
+      name: preset_name                         # Required
+      filename: test_config.yaml                # Required
 
   vulnerability01:
-    type: vulnerability
+    type: vulnerability                         # Required
     properties:
-      name: vulnerability_name
-      type: type_foo
+      name: vulnerability_name                  # Required - 
+      type: some_type                           # Required - describes the type of vulnerability, e.g privesc, RCE, DOS, 
+      source: local                             # Required - local=manually created with ansible, other remote options could be exploitdb etc.
