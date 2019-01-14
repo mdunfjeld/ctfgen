@@ -1,0 +1,52 @@
+heat_template_version: 2015-10-15
+
+description: >
+  Deploy servers
+
+parameters:
+  key_name:
+    type: string
+  image_linux:
+    type: string
+    default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64
+  flavor_linux_server:
+    type: string
+    default: m1.small
+  sec_group_linux:
+    type: comma_delimited_list
+    default: FooRules,default
+  group_net_name:
+    type: string
+  lan_subnet:
+    type: string
+  server_name:
+    type: string
+    description: Server name
+  public_net:
+    type: string
+
+resources:
+ 
+  linux_server:
+    type: OS::Nova::Server
+    properties:
+      name:             { get_param: server_name }
+      image:            { get_param: image_linux }
+      flavor:           { get_param: flavor_linux_server }
+      key_name:         { get_param: key_name }
+      networks:
+        - port:         { get_resource: linux_server_port }
+
+  linux_server_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id:       { get_param: group_net_name }
+      security_groups:  { get_param: sec_group_linux }
+      fixed_ips:
+        - subnet_id:    { get_param: lan_subnet }
+
+  linux_server_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_net }
+      port_id:          { get_resource: linux_server_port }

@@ -1,0 +1,103 @@
+heat_template_version: 2015-10-15
+description: >
+  This template is supposed to create only the networking parts.
+  Servers are specified elsewhere.
+parameters:
+  public_net:
+    type: string
+    description: >
+      ID or name of public network for which floating IP addresses will be allocated
+    default: ntnu-internal
+  group_net_name:
+    type: string
+    description: Name of lan network to be created
+    default: group01_net
+  lan_net_cidr:
+    type: string
+    description: lan network address (CIDR notation)
+    default: 192.168.1.0/24
+  lan_net_gateway:
+    type: string
+    description: lan network gateway address
+    default: 192.168.1.1
+  lan_net_pool_start:
+    type: string
+    description: Start of lan network IP address allocation pool
+    default: 192.168.1.100
+  lan_net_pool_end:
+    type: string
+    description: End of lan network IP address allocation pool
+    default: 192.168.1.199
+  dmz_net_cidr:
+    type: string
+    description: dmz network address (CIDR notation)
+    default: 10.0.1.0/24
+  dmz_net_gateway:
+    type: string
+    description: dmz network gateway address
+    default: 10.0.1.1
+  dmz_net_pool_start:
+    type: string
+    description: Start of lan network IP address allocation pool
+    default: 10.0.1.100
+  dmz_net_pool_end:
+    type: string
+    description: End of dmz network IP address allocation pool
+    default: 10.0.1.199
+
+resources:
+  group_net:
+    type: OS::Neutron::Net
+    properties:
+      name: { get_param: group_net_name }
+
+  lan_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      name: lan_subnet
+      network_id: { get_resource: group_net }
+      cidr: { get_param: lan_net_cidr }
+      gateway_ip: { get_param: lan_net_gateway }
+      allocation_pools:
+        - start: { get_param: lan_net_pool_start }
+          end: { get_param: lan_net_pool_end }
+
+  dmz_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      name: dmz_subnet
+      network_id: { get_resource: group_net }
+      cidr: { get_param: dmz_net_cidr }
+      gateway_ip: { get_param: dmz_net_gateway }
+      allocation_pools:
+        - start: { get_param: dmz_net_pool_start }
+          end: { get_param: dmz_net_pool_end }
+
+  router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_net }
+
+  router_interface_lan:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router }
+      subnet_id: { get_resource: lan_subnet }
+
+  router_interface_dmz:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router_id: { get_resource: router }
+      subnet_id: { get_resource: dmz_subnet }
+
+outputs:
+  group_name:
+    description: Group Net name
+    value: { get_attr: [group_net, name] }
+  lan_subnet:
+    description: LAN subnet 
+    value: { get_attr: [lan_subnet, name]}
+  dmz_subnet:
+    description: DMZ subnet 
+    value: { get_attr: [dmz_subnet, name]}

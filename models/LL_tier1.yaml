@@ -1,4 +1,4 @@
-heat_template_version: 2013-05-23
+heat_template_version: 2015-10-15
 
 description: >
   HOT template that invokes subtemplates
@@ -10,42 +10,38 @@ parameters:
     type: string
     description: Name of image to use for GNU/Linux servers
     default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64
-  image_windows:
-    type: string
-    description: Name of image to use for Windows servers
-    default: Windows Server 2016 Std Eval
   sec_group_linux:
     type: comma_delimited_list
     description: Security groups
-    default: default,linux
-  sec_group_windows:
-    type: comma_delimited_list
-    description: Security groups
-    default: default,windows
+    default: FooRules,default
   public_net:
     type: string
     description: >
       ID or name of public network for which floating IP addresses will be allocated
     default: ntnu-internal
- 
-resources:
+  group_id:
+    type: string
+    description: 2 digit ID assigned to each group.
 
-  servers:
-    type: LL_tier2_servers.yaml
-    depends_on: LL_tier2_networking.yaml
-    properties:
-      key_name:          { get_param: key_name }
-      image_linux:       { get_param: image_linux }  
-      image_windows:     { get_param: image_windows }  
-      public_net:        { get_param: public_net }  
-      sec_group_linux:   { get_param: sec_group_linux }  
-      sec_group_windows: { get_param: sec_group_windows }  
+resources:
 
   networking:
     type: LL_tier2_networking.yaml
-    depends_on: servers
     properties:
-      public_net:        { get_param: public_net }  
-      group_net:         { get_attr: [iac_base,admin_net] }
-      lan_subnet:        { get_attr: [iac_base,admin_subnet] }
-      dmz_subnet:        { get_attr: [iac_base,other_subnet] }
+      id: { get_param: }
+
+  
+  linux_01:
+    type: LL_tier2_linux_server.yaml
+    depends_on: networking
+    properties:
+      server_name:       "linux01"
+      key_name:          { get_param: key_name }
+      public_net:        { get_param: public_net }
+      group_net_name:    { get_attr: [networking, group_name] }
+      image_linux:       { get_param: image_linux }    
+      sec_group_linux:   { get_param: sec_group_linux }  
+      lan_subnet:        { get_attr: [networking, lan_subnet] } 
+     # dmz_subnet:        { get_attr: [networking, dmz_subnet, name] }
+
+
