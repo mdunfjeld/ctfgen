@@ -17,8 +17,12 @@ parameters:
     default: FooRules,default
   group_net_name:
     type: string
-  lan_subnet:
+  subnetA:
     type: string
+    default: subnetA
+  subnetB:
+    type: string
+    default: subnetB
   server_name:
     type: string
     description: Server name
@@ -35,18 +39,34 @@ resources:
       flavor:           { get_param: flavor_linux_server }
       key_name:         { get_param: key_name }
       networks:
-        - port:         { get_resource: linux_server_port }
+        - port:         { get_resource: linux_server_port1 }
+      #user_data_format: RAW
+      #user_data:
+      #  str_replace:
+      #    template: { get_file:  }
+      #    params:
+      #      manager_ip_address: { get_param: manager_ip }
 
-  linux_server_port:
+  linux_server_port1:
     type: OS::Neutron::Port
     properties:
       network_id:       { get_param: group_net_name }
       security_groups:  { get_param: sec_group_linux }
       fixed_ips:
-        - subnet_id:    { get_param: lan_subnet }
+        - subnet_id:    { get_param: subnetA }
 
-  linux_server_floating_ip:
-    type: OS::Neutron::FloatingIP
+  linux_server_port2:
+    type: OS::Neutron::Port
     properties:
-      floating_network: { get_param: public_net }
-      port_id:          { get_resource: linux_server_port }
+      network_id:       { get_param: group_net_name }
+      security_groups:  { get_param: sec_group_linux }
+      fixed_ips:
+        - subnet_id:    { get_param: subnetB }
+
+outputs:
+  port1:
+    description: The network port of the linux node port 1.
+    value: { get_resource: linux_server_port1 }
+  port2:
+    description: The network port of the linux node port 2.
+    value: { get_resource: linux_server_port2}

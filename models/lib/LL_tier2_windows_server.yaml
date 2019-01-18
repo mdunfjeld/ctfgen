@@ -17,8 +17,12 @@ parameters:
     default: FooRules,default
   group_net_name:
     type: string
-  lan_subnet:
+  subnetA:
     type: string
+    default: subnetA
+  subnet B:
+    type: string
+    default: subnetB
   server_name:
     type: string
     description: Server name
@@ -35,18 +39,28 @@ resources:
       flavor:           { get_param: flavor_windows_server }
       key_name:         { get_param: key_name }
       networks:
-        - port:         { get_resource: windows_server_port }
+        - port:         { get_resource: windows_server_port1 }
 
-  windows_server_port:
+  windows_server_port1:
     type: OS::Neutron::Port
     properties:
       network_id:       { get_param: group_net_name }
       security_groups:  { get_param: sec_group_windows }
       fixed_ips:
-        - subnet_id:    { get_param: lan_subnet }
+        - subnet_id:    { get_param: subnetA }
 
-  windows_server_floating_ip:
-    type: OS::Neutron::FloatingIP
+  windows_server_port2:
+    type: OS::Neutron::Port
     properties:
-      floating_network: { get_param: public_net }
-      port_id:          { get_resource: windows_server_port }
+      network_id:       { get_param: group_net_name }
+      security_groups:  { get_param: sec_group_windows }
+      fixed_ips:
+        - subnet_id:    { get_param: subnetB }
+
+outputs:
+  port1:
+    description: The network port of the windows node port 1.
+    value: { get_resource: windows_server_port1 }
+  port2:
+    description: The network port of the windows node port 2.
+    value: { get_resource: windows_server_port2}

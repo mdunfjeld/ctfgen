@@ -1,7 +1,10 @@
 
+options:
+  cloud-platform: heat
+
 resources:
   kali1:                                        # Object name, can be anything and is used to refer to this object from elsewhere
-    type: node                                  # Required, [node, router, config, vulnerability]
+    type: node                                  # Required, [node, router]
     properties:
       name: 01-kali1-group01                    # Required
       flavor: m1.medium                         # Required
@@ -9,10 +12,14 @@ resources:
       key: id_testkey                           # Required
       floating_IP: true                         # Optional, default=false
       networkA:                                 # Add networkB, networkC and so on for every network the node is connected to
-        - router: router01                      # Required - use object name
-        - subnet: subnetA                       # Required - subnet must exist in the router object
-        
-  
+        router: router01                        # Required - use object name
+        subnet: subnetA                         # Required - subnet must exist in the router object
+      config_preset:                            # Optional - Default image is used if not specified.
+        name: web                               # Name will be used to look up corresponding file. Must exist. 
+      vulnerability:                            # Optional - 
+        - shellshock                            # Optional - Name must be unique within DB. App will query DB to verify that vuln will work on the node.
+        - heartbleed
+ 
   kali2:                                        # Object name, can be anything 
     type: node                                  # Required
     properties:
@@ -60,6 +67,10 @@ resources:
       networkA: 
         - router: router01                      # Required
         - subnet: subnetB      # LAN            # Required
+      config: web
+      vulnerability:
+        - shellshock
+        - 
 
   domaincontroller:
     type: node
@@ -82,31 +93,22 @@ resources:
       key: id_testkey                           # Required
       floatingIP: false                         # Optional, default=false
       networkA: 
-        - router: router01                      # Required
-        - subnet: subnetA      # LAN            # Required
+        router: router01                        # Required
+        subnet: subnetA      # LAN              # Required
 
   router01:
     type: router                                # Required
     properties:
-      name: router01                            # Required
+      name: router01                            # Optional
       networks:
-      - subnetA:
+        subnetA:                                # Required - List might be better than subproperties
           name: group01-dmz                     # Required
           cidr: 192.168.1.0/24                  # Required
           gatewayIP: 192.168.1.1                # Optional, set automatically if not specified
-      - subnetB:
+          routes:                               # 
+            - 192.168.3.0/24: 10.11.12.13 
+            - 192.168.5.0/24: 1.2.3.4
+        subnetB:
           name: group01-lan                     # Required
           cidr: 10.0.1.0/24
   
-  config_preset01:
-    type: config                                # Required
-    properties:
-      name: preset_name                         # Required
-      filename: test_config.yaml                # Required
-
-  vulnerability01:
-    type: vulnerability                         # Required
-    properties:
-      name: vulnerability_name                  # Required - 
-      type: some_type                           # Required - describes the type of vulnerability, e.g privesc, RCE, DOS, 
-      source: local                             # Required - local=manually created with ansible, other remote options could be exploitdb etc.

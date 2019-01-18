@@ -10,40 +10,44 @@ parameters:
     default: ntnu-internal
   group_net_name:
     type: string
-    description: Name of lan network to be created
+    description: Name of subnetA network to be created
     default: group01_net
-  lan_net_cidr:
+  subnetA_net_cidr:
     type: string
-    description: lan network address (CIDR notation)
+    description: subnetA network address (CIDR notation)
     default: 192.168.1.0/24
-  lan_net_gateway:
+  subnetA_net_gateway:
     type: string
-    description: lan network gateway address
+    description: subnetA network gateway address
     default: 192.168.1.1
-  lan_net_pool_start:
+  subnetA_net_pool_start:
     type: string
-    description: Start of lan network IP address allocation pool
+    description: Start of subnetA network IP address allocation pool
     default: 192.168.1.100
-  lan_net_pool_end:
+  subnetA_net_pool_end:
     type: string
-    description: End of lan network IP address allocation pool
+    description: End of subnetA network IP address allocation pool
     default: 192.168.1.199
-  dmz_net_cidr:
+  subnetB_net_cidr:
     type: string
-    description: dmz network address (CIDR notation)
+    description: subnetB network address (CIDR notation)
     default: 10.0.1.0/24
-  dmz_net_gateway:
+  subnetB_net_gateway:
     type: string
-    description: dmz network gateway address
+    description: subnetB network gateway address
     default: 10.0.1.1
-  dmz_net_pool_start:
+  subnetB_net_pool_start:
     type: string
-    description: Start of lan network IP address allocation pool
+    description: Start of subnetA network IP address allocation pool
     default: 10.0.1.100
-  dmz_net_pool_end:
+  subnetB_net_pool_end:
     type: string
-    description: End of dmz network IP address allocation pool
+    description: End of subnetB network IP address allocation pool
     default: 10.0.1.199
+  subnetA:
+    type: string
+  subnetB:
+    type: string
 
 resources:
   group_net:
@@ -51,27 +55,27 @@ resources:
     properties:
       name: { get_param: group_net_name }
 
-  lan_subnet:
+  subnetA:
     type: OS::Neutron::Subnet
     properties:
-      name: lan_subnet
-      network_id: { get_resource: group_net }
-      cidr: { get_param: lan_net_cidr }
-      gateway_ip: { get_param: lan_net_gateway }
+      name:           { get_param: subnetA }
+      network_id:     { get_resource: group_net }
+      cidr:           { get_param: subnetA_net_cidr }
+      gateway_ip:     { get_param: subnetA_net_gateway }
       allocation_pools:
-        - start: { get_param: lan_net_pool_start }
-          end: { get_param: lan_net_pool_end }
+        - start:      { get_param: subnetA_net_pool_start }
+          end:        { get_param: subnetA_net_pool_end }
 
-  dmz_subnet:
+  subnetB:
     type: OS::Neutron::Subnet
     properties:
-      name: dmz_subnet
-      network_id: { get_resource: group_net }
-      cidr: { get_param: dmz_net_cidr }
-      gateway_ip: { get_param: dmz_net_gateway }
+      name:         { get_param: subnetB }
+      network_id:   { get_resource: group_net }
+      cidr:         { get_param: subnetB_net_cidr }
+      gateway_ip:   { get_param: subnetB_net_gateway }
       allocation_pools:
-        - start: { get_param: dmz_net_pool_start }
-          end: { get_param: dmz_net_pool_end }
+        - start:    { get_param: subnetB_net_pool_start }
+          end:      { get_param: subnetB_net_pool_end }
 
   router:
     type: OS::Neutron::Router
@@ -79,25 +83,25 @@ resources:
       external_gateway_info:
         network: { get_param: public_net }
 
-  router_interface_lan:
+  router_interface_subnetA:
     type: OS::Neutron::RouterInterface
     properties:
       router_id: { get_resource: router }
-      subnet_id: { get_resource: lan_subnet }
+      subnet_id: { get_resource: subnetA }
 
-  router_interface_dmz:
+  router_interface_subnetB:
     type: OS::Neutron::RouterInterface
     properties:
       router_id: { get_resource: router }
-      subnet_id: { get_resource: dmz_subnet }
+      subnet_id: { get_resource: subnetB }
 
 outputs:
   group_name:
     description: Group Net name
     value: { get_attr: [group_net, name] }
-  lan_subnet:
-    description: LAN subnet 
-    value: { get_attr: [lan_subnet, name]}
-  dmz_subnet:
-    description: DMZ subnet 
-    value: { get_attr: [dmz_subnet, name]}
+  subnetA:
+    description: subnetA subnet 
+    value: { get_attr: [subnetA, name]}
+  subnetB:
+    description: subnetB subnet 
+    value: { get_attr: [subnetB, name]}
