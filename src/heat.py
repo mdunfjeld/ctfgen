@@ -1,8 +1,9 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import yamlordereddictloader
 import oyaml as yaml
-import src.defaults
+from src.defaults import *
 import pprint
+import re
 
 class Router(object):
     net_name = 'Lab-Net'
@@ -15,6 +16,7 @@ class Router(object):
         self.public_net = 'ntnu-internal'
         self.net_name = 'CyberRange-Net'
         self.subnet_count = len(self.data['properties']['networks'])
+        self.update_heat_template()
 
     def print_yaml(self):
         a = yaml.dump(self.template, Dumper=yamlordereddictloader.SafeDumper)
@@ -24,8 +26,15 @@ class Router(object):
         self.add_router()
         self.add_router_interfaces()
         self.add_subnets()
+        self.write_template()
+
         pp = pprint.PrettyPrinter(indent=2)
        # pp.pprint(self.template)
+
+    def write_template(self):
+        with open('heat-network.yaml', 'a+') as file:
+            a = yaml.dump(self.template, Dumper=yamlordereddictloader.SafeDumper)
+            file.write(str(a).strip("'"))
 
     def add_subnets(self):
         for subnet in self.data['properties']['networks'].keys():
@@ -95,29 +104,116 @@ class Router(object):
             })
             self.template['resources'].update(interface)
 
-    def write_template(self):
-        with open('heat-network', 'a') as file:
-            file.write(self.template)
+
         
     def foo(self):
-        pass
         pp = pprint.PrettyPrinter(indent=2)
         pp.pprint(self.template)
                           
 
 
-
+class Dictlist(dict):
+    def __setitem__(self, key, value):
+        try:
+            self[key]
+        except KeyError:
+            super(Dictlist, self).__setitem__(key, [])
+        self[key].append(value)
  
 
 
 class Node(object):
-    #flavor_= 
-    def __init__(self, data, node_name):
+    def __init__(self, data, node_name, template):
         self.data = data
         self.node_name = node_name
-        self.structure = OrderedDict()
-        #self.flavor = 
-        #self.os = 
-        #self.floating_ip = True
-    def foo(self):
-        print(self.data)
+        self.template = template
+        self.subnet_count = len(data['properties']['networks'])
+        self.platform = self.check_platform()
+        self.update_heat_template()
+
+    def update_heat_template(self):
+        self.add_node()
+        self.write_template()
+
+    def write_template(self):
+        with open('heat-network.yaml', 'a+') as file:
+            a = yaml.dump(self.template, Dumper=yamlordereddictloader.SafeDumper)
+            file.write(str(a).strip("'"))
+        
+    def flavor(self):
+        if self.platform == 'linux':
+            return 'm1.small'
+        elif self.platform == 'windows':
+            return 'm1.medium'
+        
+    def print_yaml(self, f):
+        a = yaml.dump(f, Dumper=yamlordereddictloader.SafeDumper)
+        print(a)
+
+    @staticmethod
+    def prettyprint(f):
+        pp = pprint.PrettyPrinter(indent=2)
+        pp.pprint(f)
+
+    def check_platform(self):
+        platform = str(self.data['properties']['os']).lower()
+        for image in windows_image_list:
+            if platform in str(image).lower():
+                return 'windows'
+        for i in linux_image_list:
+            if platform in str(i).lower():
+                return 'linux'
+        #raise Exception
+        return 'undefined'
+
+    def add_node_ports():
+        subnet = data['properties']['networks']
+        for port_number in range(0, self.subnet_count):
+            port_name = str(self.node_name + '_port' + port_number)
+            port_name = OrderedDict({
+                'type': 'OS::Neutron::Port',
+                'properties': {
+                    'network_id': '{ get_param: group_net_name }',
+                    'security_groups': '{ get_param: sec_group_' + self.node_name + ' }',
+                    'fixed_ips': {
+                        '- subnet_id': '{ get_param: '
+                    }
+                }
+            })
+            self.template['resources'].update(port_name)
+
+    def add_node(self):
+        node = OrderedDict({
+            self.node_name: {
+                'type': 'OS::Nova::Server',
+                'properties': {
+                    'name': '{ get_param: server_name',
+                    'image': '{ get_param: ' + self.node_name + '_image }',
+                    'flavor': '{ get_param: flavor_' + self.platform + '_server }',
+                    'key_name': '{ get_param: key_name }',
+                    'networks': [
+                        OrderedDict({
+                            'port': 'foo'
+                        }),
+                        OrderedDict({
+                            'port': 'bar'
+                        })
+                    ]
+                }
+            }
+        })
+       # self.prettyprint(node)
+        self.print_yaml(node)
+        self.template['resources'].update(node)
+
+"""
+        OrderedDict([ 
+            ( 'networks',
+            [ 
+                OrderedDict([('port', 'abcd')]),
+                OrderedDict([('port', 'defg')])]
+            )
+        ])
+
+        
+"""
