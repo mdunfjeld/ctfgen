@@ -10,9 +10,9 @@ from src.heat import Node
 from src.heat import Router
 import ipaddress
 import pprint
-from shutil import copy
+import shutil
 from time import strftime
-
+import subprocess
 
 def load_config_file(filepath):
     try:
@@ -26,9 +26,12 @@ def load_config_file(filepath):
 def check_platform(data):   
     if str(data['options']['cloud-platform'].lower()) == 'heat':
         heat_instantiate(data)
+        platform = 'heat'
     elif data['options']['cloud-platform'].lower() == "terraform":
+        platform = 'terraform'
         raise NotImplementedError
         #sys.exit(1)
+    return platform
    
 
 def heat_instantiate(data):
@@ -46,10 +49,14 @@ def read_network_template():
         f = yaml.load(file, Loader=yamlordereddictloader.Loader)
         return f
 
-def overwrite_temp_file():
-    timestamp = strftime("%Y_%m_%d-%H_%M-")
-    dst = os.path.join('history', timestamp, 'heat-network.yaml')
-    copy('heat-network-yaml', dst)
+def write_template_to_file(template, platform):
+    timestamp = strftime("%Y_%m_%d-%H_%M")
+    filename = os.path.join('history', 'heat-stack-' + timestamp + '.yaml')
+    if os.path.exists(platform + '-stack.yaml'):
+        shutil.copy(platform + '-stack.yaml', filename)
+    with open(platform + '-stack.yaml', 'w') as file:
+        file.write(str(template))
+    return filename
 
 def print_yaml(template):
     a = yaml.dump(template, Dumper=yamlordereddictloader.SafeDumper)
@@ -68,23 +75,16 @@ def main():
     global network_template
     global router_list
     global node_list
-    if os.path.exists('heat-network.yaml'):
-        os.remove('heat-network.yaml')
+    if os.path.exists('heat-stack.yaml'):
+        os.remove('heat-stack.yaml')
     network_template = read_network_template()
     router_list = []
     node_list = []
-    check_platform(data)
-    #overwrite_temp_file()
-    router_list[0].data
-    #node_list[1].print_yaml()  
-    pp = pprint.PrettyPrinter(indent=2)
-  #  pp.pprint(network_template)
-
+    platform = check_platform(data)
+    filename = write_template_to_file(network_template, platform)
 
     #prettyprint(node_list[0].data)
-    #print_yaml(node_list[0].data)
-
-
+    print_yaml(network_template)
 
 if __name__ == '__main__':
     main()
