@@ -26,15 +26,6 @@ class Router(object):
         self.add_router()
         self.add_router_interfaces()
         self.add_subnets()
-        self.write_template()
-
-        pp = pprint.PrettyPrinter(indent=2)
-       # pp.pprint(self.template)
-
-    def write_template(self):
-        with open('heat-stack.yaml', 'a+') as file:
-            a = yaml.dump(self.template, Dumper=yamlordereddictloader.SafeDumper)
-            file.write(str(a).strip("'"))
 
     def add_subnets(self):
         for subnet in self.data['properties']['networks'].keys():
@@ -54,10 +45,6 @@ class Router(object):
                 }
             })
             self.template['resources'].update(subnet_resource)
-         #   self.template['parameters'].update(OrderedDict({
-          #      subnet: {
-         #           'type': 'string'
-         #       }}))
             self.template['parameters'].update(OrderedDict({
                 subnet + '_net_cidr': {
                     'type': 'string',
@@ -105,12 +92,6 @@ class Router(object):
             self.template['resources'].update(interface)
 
 
-        
-    def foo(self):
-        pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(self.template)
-
-
 class Node(object):
     def __init__(self, data, node_name, template):
         self.data = data
@@ -135,13 +116,7 @@ class Node(object):
         self.add_node()
         self.add_node_ports()
         self.get_node_ports()
-        self.write_template()
-
-    def write_template(self):
-        with open('heat-stack.yaml', 'a+') as file:
-            a = yaml.dump(self.template, Dumper=yamlordereddictloader.SafeDumper)
-            file.write(str(a).strip("'"))
-        
+ 
     def set_flavor(self):
         if 'flavor' not in self.data['properties'].keys():
             platform = self.check_platform()
@@ -231,3 +206,6 @@ class Node(object):
                 'type': 'string'
             }
         }))
+
+    def add_node_security(self):
+        pass

@@ -51,11 +51,10 @@ def read_network_template():
 
 def write_template_to_file(template, platform):
     timestamp = strftime("%Y_%m_%d-%H_%M")
-    filename = os.path.join('history', 'heat-stack-' + timestamp + '.yaml')
-    if os.path.exists(platform + '-stack.yaml'):
-        shutil.copy(platform + '-stack.yaml', filename)
-    with open(platform + '-stack.yaml', 'w') as file:
-        file.write(str(template))
+    filename = os.path.join('history', platform + '-stack-' + timestamp + '.yaml')
+    with open(filename, 'w') as file:
+        yaml_template = yaml.dump(template, Dumper=yamlordereddictloader.SafeDumper)
+        file.write(str(yaml_template))
     return filename
 
 def print_yaml(template):
