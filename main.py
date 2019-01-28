@@ -5,7 +5,6 @@ import os
 import oyaml as yaml
 import argparse
 from collections import OrderedDict
-import yamlordereddictloader
 from src.heat import Node
 from src.heat import Router
 import ipaddress
@@ -17,7 +16,7 @@ import subprocess
 def load_config_file(filepath):
     try:
         with open(filepath, 'r') as file:
-            f1 = yaml.load(file, Loader=yamlordereddictloader.Loader)
+            f1 = yaml.load(file)
             return f1
     except FileNotFoundError:
         print("File not found")
@@ -30,7 +29,6 @@ def check_platform(data):
     elif data['options']['cloud-platform'].lower() == "terraform":
         platform = 'terraform'
         raise NotImplementedError
-        #sys.exit(1)
     return platform
    
 
@@ -44,21 +42,21 @@ def heat_instantiate(data):
             node_list.append(n)
                 
 
-def read_network_template():
-    with open('data/empty_net_template.yaml') as file:
-        f = yaml.load(file, Loader=yamlordereddictloader.Loader)
+def get_empty_heat_template():
+    with open('data/empty_heat_template.yaml') as file:
+        f = yaml.load(file)
         return f
 
 def write_template_to_file(template, platform):
     timestamp = strftime("%Y_%m_%d-%H_%M")
     filename = os.path.join('history', platform + '-stack-' + timestamp + '.yaml')
     with open(filename, 'w') as file:
-        yaml_template = yaml.dump(template, Dumper=yamlordereddictloader.SafeDumper)
+        yaml_template = yaml.dump(template)
         file.write(str(yaml_template))
     return filename
 
-def print_yaml(template):
-    a = yaml.dump(template, Dumper=yamlordereddictloader.SafeDumper)
+def debug_yaml(template):
+    a = yaml.dump(template)
     print(a)
 
 def prettyprint(template):
@@ -74,16 +72,13 @@ def main():
     global network_template
     global router_list
     global node_list
-    if os.path.exists('heat-stack.yaml'):
-        os.remove('heat-stack.yaml')
-    network_template = read_network_template()
+    network_template = get_empty_heat_template()
     router_list = []
     node_list = []
     platform = check_platform(data)
     filename = write_template_to_file(network_template, platform)
 
-    #prettyprint(node_list[0].data)
-    print_yaml(network_template)
+    debug_yaml(network_template)
 
 if __name__ == '__main__':
     main()

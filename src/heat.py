@@ -1,9 +1,7 @@
 from collections import OrderedDict, defaultdict
-import yamlordereddictloader
 import oyaml as yaml
 from src.defaults import *
 import pprint
-import re
 
 class Router(object):
     net_name = 'Lab-Net'
@@ -14,12 +12,11 @@ class Router(object):
         self.router_name = router_name
         self.template = template
         self.public_net = 'ntnu-internal'
-        self.net_name = 'CyberRange-Net'
         self.subnet_count = len(self.data['properties']['networks'])
         self.initialize_object()
 
-    def print_yaml(self):
-        a = yaml.dump(self.template, Dumper=yamlordereddictloader.SafeDumper)
+    def debug_yaml(self):
+        a = yaml.dump(self.template)
         print(a)
 
     def initialize_object(self):
@@ -31,16 +28,22 @@ class Router(object):
         for subnet in self.data['properties']['networks'].keys():
             subnet_resource = OrderedDict({
                 subnet: {
-                    'type': 'OS:Neutron::Subnet',
+                    'type': 'OS::Neutron::Subnet',
                     'properties': {
-                        'name': '{ get_param: ' + subnet + ' }',
-                        'network_id': '{ get_resource: Lab_net }',
-                        'cidr': '{ get_param: ' + subnet + '_net_cidr }',
-                        'gateway_ip': '{ get_param: ' + subnet + '_net_gateway }',
-                        'allocation_pools': {
-                            '[ - start': ' get_param: ' + subnet + '_net_pool_start }',
-                            'end': '{ get_param: ' + subnet + '_net_pool_end] }'
-                        }
+                        'name': subnet,
+                        'network_id': { 
+                            'get_resource': 'Lab_net', 
+                        },
+                        'cidr': { 
+                            'get_param': subnet + '_net_cidr'
+                        },
+                        'gateway_ip': { 
+                            'get_param': subnet + '_net_gateway'
+                        },
+                        'allocation_pools': [{
+                            'start': { 'get_param': subnet + '_net_pool_start' },
+                            'end': { 'get_param': subnet + '_net_pool_end' }
+                        }],
                     }
                 }
             })
@@ -71,8 +74,9 @@ class Router(object):
         router = OrderedDict({self.router_name: {
             'type': 'OS::Neutron::Router',
             'properties': {
+                'name': self.router_name,
                 'external_gateway_info': {
-                    'network': '{ get_param: public_net }'
+                    'network': { 'get_param': 'public_net' }
                 }
             }
         }})
@@ -84,8 +88,8 @@ class Router(object):
                 str(self.router_name + '_interface_' + subnet_name): {
                     'type': 'OS::Neutron::RouterInterface',
                     'properties': {
-                        'router_id': '{ get_resource: ' + self.router_name + ' }',
-                        'subnet_id': '{ get_resource: ' + subnet_name + ' }'
+                        'router_id': { 'get_resource': self.router_name },
+                        'subnet_id': { 'get_resource': subnet_name  }
                     }   
                 }
             })
@@ -97,25 +101,31 @@ class Node(object):
         self.data = data
         self.node_name = node_name
         self.template = template
-        self.subnet_count = len(data['properties']['networks'])
+        self.subnet_count = self.count_subnets()
         self.platform = self.check_platform()
         self.initialize_object()
+
+    def count_subnets(self):
+        if not 'networks' in self.data['properties'].keys():
+            return 0
+        elif self.data['properties']['networks'] == None:
+            return 0
+        else:
+            return len(self.data['properties']['networks'])
 
     def get_node_ports(self):
         subnet_list = []
         for router in self.data['properties']['networks'].keys():
-            subnet = self.data['properties']['networks'][router]['subnet']
-            a = subnet.split(',')
-            for k in a:
-                b = str(k).strip(' ')
-                subnet_list.append(b)
+            for k in self.data['properties']['networks'][router]['subnet'].split(','):
+                subnet = str(k).strip(' ')
+                subnet_list.append(subnet)
         for port_number, subnet_name in zip(range(0, len(subnet_list)), subnet_list):
             yield (port_number, subnet_name)
 
     def initialize_object(self):
         self.add_node()
-        self.add_node_ports()
-        self.get_node_ports()
+        if 'networks' in self.data['properties'].keys() and self.data['properties']['networks'] is not None:
+            self.add_node_ports()
  
     def set_flavor(self):
         if 'flavor' not in self.data['properties'].keys():
@@ -128,9 +138,8 @@ class Node(object):
             platform = str(self.data['properties']['flavor']).lower()
             return platform
         
-    def print_yaml(self, f):
-        a = yaml.dump(f, Dumper=yamlordereddictloader.SafeDumper)
-        print(a)
+    def debug_yaml(self, f):
+        print(yaml.dump(f))
 
     @staticmethod
     def prettyprint(f):
@@ -151,16 +160,15 @@ class Node(object):
         for port_number, subnet in self.get_node_ports():
             port_name = str(self.node_name + '_port' + str(port_number))
             port = OrderedDict({
-                port_name: {
+            port_name: {
                 'type': 'OS::Neutron::Port',
                 'properties': {
-                    'network_id': '{ get_param: group_net_name }',
-                    'security_groups': '{ get_param: sec_group_' + self.node_name + ' }',
-                    'fixed_ips': {
-                        '- subnet_id': "{ get_resource: " + subnet + " }"
-                    }
-                }
-                }
+                    'network': { 'get_resource': 'Lab_net' },
+                #    'security_groups': { 'get_param': 'sec_group_' + self.node_name  },
+                    'fixed_ips': [{
+                        'subnet_id': { 'get_resource': subnet }
+                    }]
+                }}
             })
             self.template['resources'].update(port)
 
@@ -168,16 +176,16 @@ class Node(object):
         port_list = []
         for portnumber in range(0, self.subnet_count):
             port_list.append(OrderedDict({
-                'port': '{ get_resource: ' + self.node_name + '_port' + str(portnumber) + ' }'
+                'port': { 'get_resource': self.node_name + '_port' + str(portnumber) }
             }))
         node = OrderedDict({
             self.node_name: {
                 'type': 'OS::Nova::Server',
                 'properties': {
-                    'name': '{ get_param: ' + self.node_name + '_server_name }',
-                    'image': '{ get_param: ' + self.node_name + '_image }',
-                    'flavor': '{ get_param: flavor_' + self.platform + '_server }',
-                    'key_name': '{ get_param: key_name }',
+                    'name': { 'get_param': self.node_name + '_server_name' },
+                    'image': { 'get_param': self.node_name + '_image' },
+                    'flavor': { 'get_param': self.node_name + '_flavor' },
+                    'key_name': { 'get_param': 'key_name' },
                     'networks': port_list
                 }
             }
@@ -206,6 +214,21 @@ class Node(object):
                 'type': 'string'
             }
         }))
+
+    def add_floating_ip(self):
+        for router in self.data['properties']['networks'][router].keys():
+            if 'public_ip' in self.data['properties']['networks'][router].keys() or self.data['properties']['networks'][router]['public_ip'] == 'yes':
+                self.template['resources'].update(OrderedDict({
+                    self.node_name + '_floating_ip': {
+                        'type': 'OS::Neutron::FloatingIP',
+                        'properties': {
+                            'floating_network_id': { 'get_param': 'public_net' },
+                            'port_id': { 'get_resource': self.node_name + '_port0' }  # Cba to fix this now. Make sure to set port ID at some point
+                        }
+                    }
+                }))
+
+
 
     def add_node_security(self):
         pass
