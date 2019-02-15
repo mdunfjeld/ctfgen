@@ -2,99 +2,7 @@ from collections import OrderedDict, defaultdict
 import oyaml as yaml
 from src.defaults import *
 import pprint
-
-class Router(object):
-    net_name = 'Lab-Net'
-    public_net = 'ntnu-internal'
-
-    def __init__(self, data, router_name, template):
-        self.data = data
-        self.router_name = router_name
-        self.template = template
-        self.public_net = 'ntnu-internal'
-        self.subnet_count = len(self.data['properties']['networks'])
-        self.initialize_object()
-
-    def debug_yaml(self):
-        a = yaml.dump(self.template)
-        print(a)
-
-    def initialize_object(self):
-        self.add_router()
-        self.add_router_interfaces()
-        self.add_subnets()
-
-    def add_subnets(self):
-        for subnet in self.data['properties']['networks'].keys():
-            subnet_resource = OrderedDict({
-                subnet: {
-                    'type': 'OS::Neutron::Subnet',
-                    'properties': {
-                        'name': subnet,
-                        'network_id': { 
-                            'get_resource': 'Lab_net', 
-                        },
-                        'cidr': { 
-                            'get_param': subnet + '_net_cidr'
-                        },
-                        'gateway_ip': { 
-                            'get_param': subnet + '_net_gateway'
-                        },
-                        'allocation_pools': [{
-                            'start': { 'get_param': subnet + '_net_pool_start' },
-                            'end': { 'get_param': subnet + '_net_pool_end' }
-                        }],
-                    }
-                }
-            })
-            self.template['resources'].update(subnet_resource)
-            self.template['parameters'].update(OrderedDict({
-                subnet + '_net_cidr': {
-                    'type': 'string',
-                    'default': '192.168.1.0/24'
-                }}))
-            self.template['parameters'].update(OrderedDict({
-                subnet + '_net_gateway': {
-                    'type': 'string',
-                    'default': '192.168.1.1'
-                }}))
-            self.template['parameters'].update(OrderedDict({
-                subnet + '_net_pool_start': {
-                    'type': 'string',
-                    'default': '192.168.1.100'
-                }}))
-            self.template['parameters'].update(OrderedDict({
-                subnet + '_net_pool_end': {
-                    'type': 'string',
-                    'default': '192.168.1.200'
-                }}))
-            
-
-    def add_router(self):
-        router = OrderedDict({self.router_name: {
-            'type': 'OS::Neutron::Router',
-            'properties': {
-                'name': self.router_name,
-                'external_gateway_info': {
-                    'network': { 'get_param': 'public_net' }
-                }
-            }
-        }})
-        self.template['resources'].update(router)
-
-    def add_router_interfaces(self):
-        for subnet_name in self.data['properties']['networks'].keys():
-            interface = OrderedDict({
-                str(self.router_name + '_interface_' + subnet_name): {
-                    'type': 'OS::Neutron::RouterInterface',
-                    'properties': {
-                        'router_id': { 'get_resource': self.router_name },
-                        'subnet_id': { 'get_resource': subnet_name  }
-                    }   
-                }
-            })
-            self.template['resources'].update(interface)
-
+import ipaddress
 
 class Node(object):
     def __init__(self, data, node_name, template):
@@ -126,7 +34,8 @@ class Node(object):
         self.add_node()
         if 'networks' in self.data['properties'].keys() and self.data['properties']['networks'] is not None:
             self.add_node_ports()
- 
+        self.add_security_group()
+
     def set_flavor(self):
         if 'flavor' not in self.data['properties'].keys():
             platform = self.check_platform()
@@ -163,8 +72,8 @@ class Node(object):
             port_name: {
                 'type': 'OS::Neutron::Port',
                 'properties': {
-                    'network': { 'get_resource': 'Lab_net' },
-                #    'security_groups': { 'get_param': 'sec_group_' + self.node_name  },
+                    'network': { 'get_resource': 'neutron-net' },
+                    'security_groups': [{ 'get_resource': self.node_name + '_security_group_' + subnet }],
                     'fixed_ips': [{
                         'subnet_id': { 'get_resource': subnet }
                     }]
@@ -178,6 +87,7 @@ class Node(object):
             port_list.append(OrderedDict({
                 'port': { 'get_resource': self.node_name + '_port' + str(portnumber) }
             }))
+        # Node resource
         node = OrderedDict({
             self.node_name: {
                 'type': 'OS::Nova::Server',
@@ -185,12 +95,16 @@ class Node(object):
                     'name': { 'get_param': self.node_name + '_server_name' },
                     'image': { 'get_param': self.node_name + '_image' },
                     'flavor': { 'get_param': self.node_name + '_flavor' },
-                    'key_name': { 'get_param': 'key_name' },
-                    'networks': port_list
+                    'key_name': { 'get_param': 'key_name' },                # This should be made dynamic at some point
+                    'networks': port_list,
+                    'user_data_format': 'RAW',
+
                 }
             }
         })
         self.template['resources'].update(node)
+
+        # Heat parameters related to Node
         self.template['parameters'].update(OrderedDict({
             str(self.node_name + '_server_name'): {
                 'type': 'string',
@@ -223,12 +137,52 @@ class Node(object):
                         'type': 'OS::Neutron::FloatingIP',
                         'properties': {
                             'floating_network_id': { 'get_param': 'public_net' },
-                            'port_id': { 'get_resource': self.node_name + '_port0' }  # Cba to fix this now. Make sure to set port ID at some point
+                            'port_id': { 'get_resource': self.node_name + '_port0' } 
                         }
                     }
                 }))
+                
+    def create_portsecurity_rule(self, port, protocol):
+        return OrderedDict({
+            'remote_ip_prefix': '0.0.0.0/0',
+            'protocol': protocol,
+            'port_range_min': port,
+            'port_range_max': port
+        })
 
+    def add_security_group(self):
+        # ICMP is always allowed.
+        rule_list = [
+            OrderedDict({
+                'remote_ip_prefix': '0.0.0.0/0',
+                'protocol': 'icmp'
+            })]
 
+        for router in self.data['properties']['networks']:
+            subnet = self.data['properties']['networks'][router]['subnet']
+            resource_name = str(self.node_name + '_security_group_' + subnet)
 
-    def add_node_security(self):
-        pass
+            if 'tcp' in self.data['properties']['networks'][router]['port_security'].keys():
+                # All servers must have SSH even if not specified
+                if 22 not in self.data['properties']['networks'][router]['port_security']['tcp']:
+                    rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
+
+                for tcp_port in self.data['properties']['networks'][router]['port_security']['tcp']:
+                    rule_list.append(self.create_portsecurity_rule(tcp_port, 'tcp'))
+
+            else:
+                rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
+
+            if 'udp' in self.data['properties']['networks'][router]['port_security'].keys(): 
+                for udp_port in self.data['properties']['networks'][router]['port_security']['udp']:
+                    rule_list.append(self.create_portsecurity_rule(udp_port, 'udp'))
+
+            # Security group Heat resource
+            secgrp = OrderedDict({
+                resource_name: {
+                'type': 'OS::Neutron::SecurityGroup',
+                'properties': {
+                    'rules': rule_list
+                }
+            }})
+            self.template['resources'].update(secgrp)
