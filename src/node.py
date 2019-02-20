@@ -1,8 +1,7 @@
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 import oyaml as yaml
 from src.defaults import *
 import pprint
-import ipaddress
 
 class Node(object):
     def __init__(self, data, node_name, template):
@@ -10,8 +9,8 @@ class Node(object):
         self.node_name = node_name
         self.template = template
         self.subnet_count = self.count_subnets()
-        self.platform = self.check_platform()
-        self.initialize_object()
+        self.os_family = self.check_os_family()
+        self.initialize_node()
 
     def count_subnets(self):
         if not 'networks' in self.data['properties'].keys():
@@ -30,7 +29,7 @@ class Node(object):
         for port_number, subnet_name in zip(range(0, len(subnet_list)), subnet_list):
             yield (port_number, subnet_name)
 
-    def initialize_object(self):
+    def initialize_node(self):
         self.add_node()
         if 'networks' in self.data['properties'].keys() and self.data['properties']['networks'] is not None:
             self.add_node_ports()
@@ -38,14 +37,14 @@ class Node(object):
 
     def set_flavor(self):
         if 'flavor' not in self.data['properties'].keys():
-            platform = self.check_platform()
-            if platform == 'linux':
+            os_family = self.check_os_family()
+            if os_family == 'linux':
                 return 'm1.small'
-            elif platform == 'windows':
+            elif os_family == 'windows':
                 return 'm1.medium'
         else:
-            platform = str(self.data['properties']['flavor']).lower()
-            return platform
+            os_family = str(self.data['properties']['flavor']).lower()
+            return os_family
         
     def debug_yaml(self, f):
         print(yaml.dump(f))
@@ -55,13 +54,13 @@ class Node(object):
         pp = pprint.PrettyPrinter(indent=2)
         pp.pprint(f)
 
-    def check_platform(self):
-        platform = str(self.data['properties']['os']).lower()
+    def check_os_family(self):
+        os = str(self.data['properties']['os']).lower()
         for image in windows_image_list:
-            if platform in str(image).lower():
+            if os in str(image).lower():
                 return 'windows'
         for i in linux_image_list:
-            if platform in str(i).lower():
+            if os in str(i).lower():
                 return 'linux'
         return 'undefined'
 
@@ -98,7 +97,8 @@ class Node(object):
                     'key_name': { 'get_param': 'key_name' },                # This should be made dynamic at some point
                     'networks': port_list,
                     'user_data_format': 'RAW',
-
+                    'user_data': 
+                        self.add_software_config() # Fix this function
                 }
             }
         })
@@ -130,6 +130,7 @@ class Node(object):
         }))
 
     def add_floating_ip(self):
+        """Associates a node with the node in the template"""
         for router in self.data['properties']['networks'][router].keys():
             if 'public_ip' in self.data['properties']['networks'][router].keys() or self.data['properties']['networks'][router]['public_ip'] == 'yes':
                 self.template['resources'].update(OrderedDict({
@@ -143,6 +144,7 @@ class Node(object):
                 }))
                 
     def create_portsecurity_rule(self, port, protocol):
+        """Creates a security rule"""
         return OrderedDict({
             'remote_ip_prefix': '0.0.0.0/0',
             'protocol': protocol,
@@ -151,6 +153,7 @@ class Node(object):
         })
 
     def add_security_group(self):
+        """Adds a security group resource to the template"""
         # ICMP is always allowed.
         rule_list = [
             OrderedDict({
@@ -162,6 +165,10 @@ class Node(object):
             subnet = self.data['properties']['networks'][router]['subnet']
             resource_name = str(self.node_name + '_security_group_' + subnet)
 
+            if not 'port_security' in self.data['properties']['networks'][router].keys():
+                rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
+                continue
+             
             if 'tcp' in self.data['properties']['networks'][router]['port_security'].keys():
                 # All servers must have SSH even if not specified
                 if 22 not in self.data['properties']['networks'][router]['port_security']['tcp']:
@@ -186,3 +193,19 @@ class Node(object):
                 }
             }})
             self.template['resources'].update(secgrp)
+
+    def add_software_config(self): # It should be possible to select which files are used. Need to fix this.
+        config = OrderedDict({
+                'str_replace': {
+                    'template': { 'get_file': 'div/foo.sh' },
+                    'params': {
+                        '__puppet_master_ip__': { 'get_param': 'puppet_master_ip' }
+                    }
+                }
+        })
+        self.template['parameters'].update(OrderedDict({
+            'puppet_master_ip': {
+                'type': 'string'
+            }
+        }))
+        return config

@@ -1,8 +1,7 @@
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 import oyaml as yaml
 from src.defaults import *
 import pprint
-import ipaddress
 
 class Router(object):
     net_name = 'Lab-Net'
@@ -14,13 +13,13 @@ class Router(object):
         self.template = template
         self.subnet_list = subnet_list
         self.subnet_count = len(self.data['properties']['networks'])
-        self.initialize_object()
+        self.initialize_router()
 
     def debug_yaml(self):
         a = yaml.dump(self.template)
         print(a)
 
-    def initialize_object(self):
+    def initialize_router(self):
         self.add_router()
         self.add_router_interfaces()
         self.add_subnets()
@@ -28,7 +27,7 @@ class Router(object):
     def get_subnet_list(self):
         return self.subnet_list
 
-        """
+    """
     # Need to figure out IP allocation. Dont use this
 
 
@@ -60,6 +59,7 @@ class Router(object):
     """  
 
     def add_subnets(self):
+        """Add subnet heat resources and parameters to the template"""
         for subnet in self.data['properties']['networks'].keys():
             subnet_resource = OrderedDict({
                 subnet: {
@@ -103,9 +103,9 @@ class Router(object):
                     'type': 'string',
                     'default': '192.168.100.200'
                 }}))
-            
 
     def add_router(self):
+        """Add a router heat template resource to the template"""
         router = OrderedDict({self.router_name: {
             'type': 'OS::Neutron::Router',
             'properties': {
@@ -118,6 +118,7 @@ class Router(object):
         self.template['resources'].update(router)
 
     def add_router_interfaces(self):
+        """Adds the router's interfaces to the heat template"""
         for subnet_name in self.data['properties']['networks'].keys():
             interface = OrderedDict({
                 str(self.router_name + '_interface_' + subnet_name): {
