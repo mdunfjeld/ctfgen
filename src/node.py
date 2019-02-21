@@ -1,7 +1,10 @@
 from collections import OrderedDict
 import oyaml as yaml
-from src.defaults import *
-import pprint
+from src.data import *
+import sys
+
+from src.helpers import debug_yaml  # For debugging only
+from src.helpers import prettyprint # For debugging only
 
 class Node(object):
     def __init__(self, data, node_name, template):
@@ -9,7 +12,6 @@ class Node(object):
         self.node_name = node_name
         self.template = template
         self.subnet_count = self.count_subnets()
-        self.os_family = self.check_os_family()
         self.initialize_node()
 
     def count_subnets(self):
@@ -25,9 +27,9 @@ class Node(object):
         for router in self.data['properties']['networks'].keys():
             for k in self.data['properties']['networks'][router]['subnet'].split(','):
                 subnet = str(k).strip(' ')
-                subnet_list.append(subnet)
+                subnet_list.append((router, subnet))
         for port_number, subnet_name in zip(range(0, len(subnet_list)), subnet_list):
-            yield (port_number, subnet_name)
+            yield (port_number, subnet_name[0], subnet_name[1])
 
     def initialize_node(self):
         self.add_node()
@@ -37,22 +39,21 @@ class Node(object):
 
     def set_flavor(self):
         if 'flavor' not in self.data['properties'].keys():
-            os_family = self.check_os_family()
-            if os_family == 'linux':
-                return 'm1.small'
-            elif os_family == 'windows':
-                return 'm1.medium'
+            return 'm1.small'
+        elif self.data['properties']['flavor'].lower() not in flavor_list:
+            print('Invalid flavor selected')
+            sys.exit(1)
         else:
-            os_family = str(self.data['properties']['flavor']).lower()
-            return os_family
-        
-    def debug_yaml(self, f):
-        print(yaml.dump(f))
-
-    @staticmethod
-    def prettyprint(f):
-        pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(f)
+            return str(self.data['properties']['flavor'])
+    
+    def set_operating_system(self):
+        if 'os' not in self.data['properties'].keys():
+            return 'Ubuntu Server 18.04 LTS (Bionic Beaver) amd64'      # Default OS unless specified
+        elif self.check_os_family() is None:
+            print('Invalid operating system selected')
+            sys.exit(1)
+        else:
+            return str(self.data['properties']['os'])
 
     def check_os_family(self):
         os = str(self.data['properties']['os']).lower()
@@ -62,16 +63,19 @@ class Node(object):
         for i in linux_image_list:
             if os in str(i).lower():
                 return 'linux'
-        return 'undefined'
+        return None
 
     def add_node_ports(self):
-        for port_number, subnet in self.get_node_ports():
+        
+        for port_number, router, subnet in self.get_node_ports():
+            a = self.data['properties']['networks'].keys()
+            #print(a)
             port_name = str(self.node_name + '_port' + str(port_number))
             port = OrderedDict({
             port_name: {
                 'type': 'OS::Neutron::Port',
                 'properties': {
-                    'network': { 'get_resource': 'neutron-net' },
+                    'network': { 'get_resource': str(router + '-net') },
                     'security_groups': [{ 'get_resource': self.node_name + '_security_group_' + subnet }],
                     'fixed_ips': [{
                         'subnet_id': { 'get_resource': subnet }
@@ -90,12 +94,14 @@ class Node(object):
         node = OrderedDict({
             self.node_name: {
                 'type': 'OS::Nova::Server',
+               # 'depends on': 'management',
                 'properties': {
                     'name': { 'get_param': self.node_name + '_server_name' },
                     'image': { 'get_param': self.node_name + '_image' },
                     'flavor': { 'get_param': self.node_name + '_flavor' },
                     'key_name': { 'get_param': 'key_name' },                # This should be made dynamic at some point
                     'networks': port_list,
+                    #'puppet_master_ip': 
                     'user_data_format': 'RAW',
                     'user_data': 
                         self.add_software_config() # Fix this function
@@ -114,7 +120,7 @@ class Node(object):
         self.template['parameters'].update(OrderedDict({
             str(self.node_name + '_image'): {
                 'type': 'string',
-                'default': str(self.data['properties']['os'])
+                'default': str(self.set_operating_system())
             }
         }))
         self.template['parameters'].update(OrderedDict({
@@ -165,7 +171,7 @@ class Node(object):
             subnet = self.data['properties']['networks'][router]['subnet']
             resource_name = str(self.node_name + '_security_group_' + subnet)
 
-            if not 'port_security' in self.data['properties']['networks'][router].keys():
+            if 'port_security' not in self.data['properties']['networks'][router].keys():
                 rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
                 continue
              
@@ -185,27 +191,27 @@ class Node(object):
                     rule_list.append(self.create_portsecurity_rule(udp_port, 'udp'))
 
             # Security group Heat resource
-            secgrp = OrderedDict({
-                resource_name: {
-                'type': 'OS::Neutron::SecurityGroup',
-                'properties': {
-                    'rules': rule_list
-                }
-            }})
-            self.template['resources'].update(secgrp)
+        secgrp = OrderedDict({
+            resource_name: {
+            'type': 'OS::Neutron::SecurityGroup',
+            'properties': {
+                'rules': rule_list
+            }
+        }})
+        self.template['resources'].update(secgrp)
 
     def add_software_config(self): # It should be possible to select which files are used. Need to fix this.
         config = OrderedDict({
                 'str_replace': {
-                    'template': { 'get_file': 'div/foo.sh' },
+                    'template': { 'get_file': 'lib/testing/foo.sh' },
                     'params': {
-                        '__puppet_master_ip__': { 'get_param': 'puppet_master_ip' }
+                        '__puppet_master_ip__': { 'get_attr': ['management', 'puppet_master_ip']}
                     }
                 }
         })
-        self.template['parameters'].update(OrderedDict({
-            'puppet_master_ip': {
-                'type': 'string'
-            }
-        }))
+      #  self.template['parameters'].update(OrderedDict({
+      #      'puppet_master_ip': {
+      #          'type': 'string'
+      #      }
+      #  }))
         return config

@@ -4,6 +4,9 @@ import os
 from collections import OrderedDict
 from src.node import Node
 from src.router import Router
+from src.helpers import debug_yaml  # For debugging only
+from src.helpers import prettyprint # For debugging only
+
 
 class Scenario(object):
 
@@ -11,6 +14,9 @@ class Scenario(object):
         self.data = data
         self.template = self.get_scenario_template()
         self.platform = self.check_platform(self.data)
+        self.allocated_subnets = []
+        self.node_list = []
+        self.router_list = []
         self.initialize_scenario()
 
     def initialize_scenario(self):
@@ -32,41 +38,40 @@ class Scenario(object):
         return platform
     
     def scenario_type_is_valid(self):
-        """ Make sure scenario type is valid"""
+        """ Verify correct scenario type"""
         return True if self.data['scenario']['type'].lower() in \
-        ['ad', 'generic', 'redteam-vs-blueteam', 'jeopardy', 'wargame'] \
+        ['attack-defense', 'generic', 'redteam-vs-blueteam', 'jeopardy', 'wargame'] \
         else False
 
     def get_scenario_template(self):
         """Opens the appropriate heat template based on scenario type"""
         if self.scenario_type_is_valid():
             type = str(self.data['scenario']['type']).lower()
-            path = os.path.join('data', type + '-template.yaml')
+            path = os.path.join('lib', type + '-template.yaml')
         else:
             print('Invalid scenario type')
             sys.exit(1)
         with open(path) as file:
-            f = yaml.load(file)
-            return f
+            return yaml.load(file)
     
     def heat_instantiate(self, data):
         """Create the heat infrastructure"""
-        global allocated_subnets
-        allocated_subnets = []
         for device_name in data['resources']:
             if data['resources'][device_name]['type'] == 'router':
-                r = Router(
+                router = Router(
                     data['resources'][device_name],
                     device_name,
                     self.template,
-                    allocated_subnets
+                    self.allocated_subnets
                 )
-                allocated_subnets = r.get_subnet_list()
+                self.router_list.append(router)
+                self.allocated_subnets = router.get_allocated_subnets()
             if data['resources'][device_name]['type'] == 'node':
-                n = Node(
+                node = Node(
                     data['resources'][device_name], 
                     device_name, 
                     self.template
                 )
+                self.node_list.append(node)
 
     

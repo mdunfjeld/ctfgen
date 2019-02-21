@@ -1,12 +1,12 @@
 from collections import OrderedDict
 import oyaml as yaml
-from src.defaults import *
-import pprint
+from src.data import *
+from src.helpers import debug_yaml  # For debugging only
+from src.helpers import prettyprint # For debugging only
+import ipaddress
+import sys
 
 class Router(object):
-    net_name = 'Lab-Net'
-    public_net = 'ntnu-internal'
-
     def __init__(self, data, router_name, template, subnet_list):
         self.data = data
         self.router_name = router_name
@@ -15,50 +15,72 @@ class Router(object):
         self.subnet_count = len(self.data['properties']['networks'])
         self.initialize_router()
 
-    def debug_yaml(self):
-        a = yaml.dump(self.template)
-        print(a)
-
     def initialize_router(self):
+        netname = self.add_net()
         self.add_router()
         self.add_router_interfaces()
-        self.add_subnets()
+        self.add_subnets(netname)
 
-    def get_subnet_list(self):
+    def add_net(self):
+        netname = str(self.router_name + '-net')
+        self.template['resources'].update(OrderedDict({
+            str(self.router_name + '-net'): {
+                'type': 'OS::Neutron::Net',
+                'properties': {
+                    'name': netname
+                }
+            }
+        }))
+        return netname
+
+    def get_allocated_subnets(self):
         return self.subnet_list
 
-    """
-    # Need to figure out IP allocation. Dont use this
-
-
-    def allocate_ip_networks(self):
-        number_allocated = len(self.subnet_list)
-        address_range = '192.168.{}.0/24'.format(number_allocated)
-        self.subnet_list.append(address_range)
-        return address_range
-
-
-
-    def setup_ip_settings(self, subnet_data):
-        if ('cidr' and 'gatewayIP') not in subnet.keys():
-            cidr, gw, dhcp_start, dhcp_end = self.allocate_IP_settings()
-
-        elif 'cidr' in subnet.keys() and 'gatewayIP' not in subnet.keys():
-            cidr = subnet['cidr']
-            tmp1 = str(cidr).split('/')[0]
-            tmp2 = tmp1.split('.')
-            gw   = str(tmp2[0] + '.' + tmp2[1] + '.' + tmp[2] + '.1')
-
-        elif 'gatewayIP' in subnet.keys() and 'cidr' not in subnet.keys():
-            pass
+    def allocate_subnet(self):
+        """Allocate an IP address range in CIDR format to a subnet"""
+        if len(self.subnet_list) == 0:
+            subnet = '192.168.1.0/24'
+            self.subnet_list.append(subnet)
+            return subnet
         else:
-            pass
+            subnet = self.subnet_list[::-1][0]
+            ip = ipaddress.IPv4Network(subnet)[0]
+            s = ipaddress.IPv4Address(ip) + 256
+            return '{}{}'.format(s, '/24')
 
-    def allocate_IP_settings(self):
-        pass
-    """  
+    def set_cidr(self, subnet):
+        if self.data['properties']['networks'][subnet] is not None and 'cidr' in self.data['properties']['networks'][subnet].keys():
+            try:
+                cidr = str(self.data['properties']['networks'][subnet]['cidr'])
+                cidr = ipaddress.IPv4Network(cidr)
+                return str(cidr)
+            except ValueError:
+                print('Invalid CIDR range selected for subnet: ' + subnet)
+                sys.exit(1)
+        elif self.data['properties']['networks'][subnet] is None:
+            return str(self.allocate_subnet())
+    
+    def set_gatewayIP(self, subnet, cidr):
+        if self.data['properties']['networks'][subnet] is not None and 'gatewayIP' in self.data['properties']['networks'][subnet].keys():
+            ip = str(self.data['properties']['networks'][subnet]['gatewayIP'])
+            if ipaddress.IPv4Address(ip) in ipaddress.IPv4Network(cidr):
+                return ip
+            else:
+                print('The selected GatewayIP is not invalid')
+                sys.exit(1)
+        elif self.data['properties']['networks'][subnet] is None:
+            ip = ipaddress.IPv4Network(cidr)[1]
+            return str(ip)
 
-    def add_subnets(self):
+    def set_dhcp_pools(self, cidr):
+        """Sets the DHCP pool boundary"""
+        start = str(ipaddress.IPv4Network(cidr)[50])
+        end   = str(ipaddress.IPv4Network(cidr)[200])
+        return start, end
+
+
+
+    def add_subnets(self, netname):
         """Add subnet heat resources and parameters to the template"""
         for subnet in self.data['properties']['networks'].keys():
             subnet_resource = OrderedDict({
@@ -67,7 +89,7 @@ class Router(object):
                     'properties': {
                         'name': subnet,
                         'network_id': { 
-                            'get_resource': 'neutron-net', 
+                            'get_resource': netname, 
                         },
                         'cidr': { 
                             'get_param': subnet + '_net_cidr'
@@ -83,25 +105,27 @@ class Router(object):
                 }
             })
             self.template['resources'].update(subnet_resource)
+            cidr = self.set_cidr(subnet)
+            gw = self.set_gatewayIP(subnet, cidr)
             self.template['parameters'].update(OrderedDict({
                 subnet + '_net_cidr': {
                     'type': 'string',
-                    'default': '192.168.100.0/24'    # Fix this
+                    'default': cidr
                 }}))
             self.template['parameters'].update(OrderedDict({
                 subnet + '_net_gateway': {
                     'type': 'string',
-                    'default': '192.168.100.1'
+                    'default': gw
                 }}))
             self.template['parameters'].update(OrderedDict({
                 subnet + '_net_pool_start': {
                     'type': 'string',
-                    'default': '192.168.100.50'
+                    'default': self.set_dhcp_pools(cidr)[0]
                 }}))
             self.template['parameters'].update(OrderedDict({
                 subnet + '_net_pool_end': {
                     'type': 'string',
-                    'default': '192.168.100.200'
+                    'default': self.set_dhcp_pools(cidr)[1]
                 }}))
 
     def add_router(self):

@@ -1,0 +1,13 @@
+heat_template_version: 2015-10-15
+description: Empty template used by generator to create Lab environment
+parameters:
+  public_net:
+    type: string
+    default: ntnu-internal
+  
+
+resources:
+  management:
+    type: lib/management-attack-defense-template.yaml
+
+
