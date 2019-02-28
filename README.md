@@ -3,7 +3,7 @@ This app generates a CTF scenario based on the input specified declaratively usi
 
 ## Requirements
 * oyaml
+* python-heatclient
+* python-openstackclient
 
-## Notes
-* Python >= 3.7 might be needed to due to the introduction of ordered dictionaries. Versions below are not tested and unexpected errors may occur if a version below is used.
 
