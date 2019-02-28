@@ -4,37 +4,23 @@ options:
   heat:
     authenticator: /path/to/openstack-rc-file
 
-scenario:
-  phases: 1                                     # Required - Default=1
-  type: attack-defense                          # Required - Possible values: {generic, jeopardy, attack-defense, Wargame, redteam-vs-blueteam}
+scenario:                                    
+  type: wargame                          # Required - Possible values: {generic, jeopardy, attack-defense, Wargame, redteam-vs-blueteam} add red-team only?
   properties:
     name: Fancy-name-of-CTF
     startDate: 01.01.1970
     endDate: 07.01.1970
     startTime: 12:00
     endtime: 23:59
-    events:                                     # Events/Injects are added as a property of a scenario
-      ddosStart:
-        type: attack                            # Required - Events should be categorised to enable automation
-        description: >
-          This is the description that describes the purpose of this event. This is
-          a multiline description.
-        activateCondition:                      # Required - Condition upon which the event is activated 
-          type: time
-          timeafterstart: 01:00:00              # Timestamp formats: +<timestamp> indicate duration after start. <timestamp> is just 
-        DeliveryMethod: Puppet
-        file: attack-module.pp 
-      reporting:
-        type: report
-        description: >
-          foobar
-        activateCondition: 
-          type: objectiveComplete
-          objective: objectiveXX
-        DeliveryMethod: email
-        file: null
+    agents:                                     # Agents are added as a property of a scenario
+      - ddos-start
+      - reporting
+    phases: 
+      - Initial
 
 resources:
+  
+  
   ubuntu-node:                                  # Required - Object name is used to refer to this object from elsewhere
     type: node                                  # Required - [node, router, vulnerability, ]
     properties:
@@ -48,8 +34,9 @@ resources:
             tcp:                                # Optional 
             - 22
             - 80
-            udp:
-            - 53
+            - 8080
+           # udp:
+           # - 53
       role:                                     # Optional - 
         name: web                               # Name will be used to look up corresponding file. Must exist. 
       userAccount:                              # Optional - Define User accounts on the system 
@@ -67,27 +54,4 @@ resources:
     properties:                                 # The idea here is to have vulnerability specific properties that can override what is default in the DB.
       bash_version: x.y.z                       # Optional 
 
-  router01:
-    type: router                                # Required
-    properties:
-      networks:
-        ctf-lan:                                # Required - Name of subnet
-          cidr: 192.168.1.0/24                  # Optional - 
-          gatewayIP: 192.168.1.1                # Optional - Only possible if cidr is set
-          routes:                               # Optional
-            - 192.168.3.0/24: 10.11.12.13       # Key is dst subnet, value is nexthop ipaddr
-
-  #router02:
-  #  type: router                                # Required
-  #  properties:
-  #    networks:
-  #      test-lan:                               # Required
-   #       cidr: 192.168.1.0/24                  # Required
-    #      gatewayIP: 192.168.1.1                # Optional
-    #      routes:                               # Optional
-     #       - 192.168.3.0/24: 10.11.12.13       # Key is dst subnet, value is nexthop ipaddr
-        #ctf-dmz:
-        #  cidr: 10.0.1.0/24
-        #  gatewayIP: 10.0.1.1
-  
 

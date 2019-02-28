@@ -1,0 +1,33 @@
+
+options:
+  cloud-platform: heat
+  heat:
+    authenticator: /path/to/openstack-rc-file
+
+scenario:                                  
+  type: jeopardy    
+  properties:
+    name: Fancy-name-of-CTF
+    startDate: 01.01.1970
+    endDate: 07.01.1970
+    startTime: 12:00
+    endtime: 23:59
+
+resources:
+  shellshock:                               
+      type: vulnerability                   
+      properties:          
+        description: Some description of the challenge/vulnerability               
+        bash_version: x.y.z
+        flag: flag{This is the flag}
+        prerequisites: 
+        points: 10
+
+  challenge1:                               
+    type: vulnerability                   
+    properties:                         
+      flag: flag{This is another flag}
+      file: /path/to/file
+      prerequisites: 
+        - shellshock
+      points: 10

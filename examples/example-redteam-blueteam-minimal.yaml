@@ -1,0 +1,31 @@
+
+options:
+  cloud-platform: heat
+  heat:
+    authenticator: /path/to/openstack-rc-file
+
+scenario:                                  
+  type: redteam-vs-blueteam    
+  properties:
+    name: Fancy-name-of-CTF
+    startDate: 01.01.1970
+    endDate: 07.01.1970
+    startTime: 12:00
+    endtime: 23:59
+    phases:
+
+resources:
+  node01:          
+    type: node                         
+    properties:
+      networks:      
+      - router: router01
+        subnet: ctf-lan
+
+  router01:
+    type: router                    
+    properties:
+      networks:
+        ctf-lan:
+          cidr: 192.168.40.0/24
+          gatewayIP: 192.168.40.1

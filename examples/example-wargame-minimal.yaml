@@ -1,0 +1,28 @@
+
+options:
+  cloud-platform: heat
+  heat:
+    authenticator: /path/to/openstack-rc-file
+
+scenario:                                  
+  type: wargame    
+  properties:
+    name: Fancy-name-of-CTF
+    startDate: 01.01.1970
+    endDate: 07.01.1970
+    startTime: 12:00
+    endtime: 23:59
+    phases:
+
+resources:
+  node01:          
+    type: node                              
+    properties:
+      networks:                               
+        router01:                              
+          subnet: ctf-lan                                    
+  
+  some-vulnerability:
+    type: vulnerability
+    properties:
+      
