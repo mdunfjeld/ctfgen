@@ -12,7 +12,7 @@ class Router(object):
         self.router_name = router_name
         self.template = template
         self.subnet_list = subnet_list
-        self.subnet_count = len(self.data['properties']['networks'])
+        self.subnet_count = self.count_subnets()
         self.initialize_router()
 
     def initialize_router(self):
@@ -20,6 +20,14 @@ class Router(object):
         self.add_router()
         self.add_router_interfaces()
         self.add_subnets(netname)
+
+    def count_subnets(self): 
+        if not 'networks' in self.data['properties'].keys():
+            return 0
+        elif self.data['properties']['networks'] == None:
+            return 0
+        else:
+            return len(self.data['properties']['networks'])
 
     def add_net(self):
         netname = str(self.router_name + '-net')
@@ -144,6 +152,7 @@ class Router(object):
     def add_router_interfaces(self):
         """Adds the router's interfaces to the heat template"""
         for subnet_name in self.data['properties']['networks'].keys():
+            #print(subnet_name)
             interface = OrderedDict({
                 str(self.router_name + '_interface_' + subnet_name): {
                     'type': 'OS::Neutron::RouterInterface',

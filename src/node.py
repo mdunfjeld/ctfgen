@@ -7,14 +7,26 @@ from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
 
 class Node(object):
-    def __init__(self, data, node_name, template):
+    # Remember to test if port_list, net and subnet works properly
+    def __init__(self, data, node_name, template, port_list=None, net=None, subnet=None):
         self.data = data
         self.node_name = node_name
+        self.port_list = port_list
+        self.net = net
+        self.subnet = subnet
         self.template = template
         self.subnet_count = self.count_subnets()
         self.initialize_node()
 
-    def count_subnets(self):
+    def initialize_node(self):
+        self.add_node(self.port_list)
+        if 'networks' in self.data['properties'].keys() and self.subnet_count is not 0:
+            self.add_node_ports(self.net, self.subnet)
+
+        if 'public_ip' in self.data['properties'].keys() and self.data['properties']['public_ip'] is True:
+            self.add_floating_ip()
+
+    def count_subnets(self): 
         if not 'networks' in self.data['properties'].keys():
             return 0
         elif self.data['properties']['networks'] == None:
@@ -22,20 +34,13 @@ class Node(object):
         else:
             return len(self.data['properties']['networks'])
 
-    def get_node_ports(self):
+    def get_node_ports(self, net, subnet ):
         subnet_list = []
         for router in self.data['properties']['networks'].keys():
-            for k in self.data['properties']['networks'][router]['subnet'].split(','):
-                subnet = str(k).strip(' ')
-                subnet_list.append((router, subnet))
+            subnet = str(self.data['properties']['networks'][router]['subnet'])
+            subnet_list.append((router, subnet))
         for port_number, subnet_name in zip(range(0, len(subnet_list)), subnet_list):
             yield (port_number, subnet_name[0], subnet_name[1])
-
-    def initialize_node(self):
-        self.add_node()
-        if 'networks' in self.data['properties'].keys() and self.data['properties']['networks'] is not None:
-            self.add_node_ports()
-        self.add_security_group()
 
     def set_flavor(self):
         if 'flavor' not in self.data['properties'].keys():
@@ -65,18 +70,17 @@ class Node(object):
                 return 'linux'
         return None
 
-    def add_node_ports(self):
-        
-        for port_number, router, subnet in self.get_node_ports():
-            a = self.data['properties']['networks'].keys()
-            #print(a)
+    def add_node_ports(self, net, subnet1):
+        for port_number in range(0, self.subnet_count):
+            router = str(self.data['properties']['networks'][port_number]['router'])
+            subnet = str(self.data['properties']['networks'][port_number]['subnet'])
             port_name = str(self.node_name + '_port' + str(port_number))
             port = OrderedDict({
             port_name: {
                 'type': 'OS::Neutron::Port',
                 'properties': {
                     'network': { 'get_resource': str(router + '-net') },
-                    'security_groups': [{ 'get_resource': self.node_name + '_security_group_' + subnet }],
+                    'security_groups': [{ 'get_resource': self.add_security_group(port_number, subnet)}],
                     'fixed_ips': [{
                         'subnet_id': { 'get_resource': subnet }
                     }]
@@ -84,13 +88,21 @@ class Node(object):
             })
             self.template['resources'].update(port)
 
-    def add_node(self):
+
+
+    def add_node(self, ports):
+        """Create the OS::Nova::Server resource and the relevant parameters"""
         port_list = []
-        for portnumber in range(0, self.subnet_count):
-            port_list.append(OrderedDict({
-                'port': { 'get_resource': self.node_name + '_port' + str(portnumber) }
-            }))
-        # Node resource
+        if ports is None:
+            for portnumber in range(0, self.subnet_count):
+                port_list.append(OrderedDict({
+                    'port': { 'get_resource': self.node_name + '_port' + str(portnumber) }
+                }))
+        else:
+            for port in ports:
+                port_list.append(OrderedDict({
+                    'port': { 'get_resource': port }
+                }))
         node = OrderedDict({
             self.node_name: {
                 'type': 'OS::Nova::Server',
@@ -101,7 +113,6 @@ class Node(object):
                     'flavor': { 'get_param': self.node_name + '_flavor' },
                     'key_name': { 'get_param': 'key_name' },                # This should be made dynamic at some point
                     'networks': port_list,
-                    #'puppet_master_ip': 
                     'user_data_format': 'RAW',
                     'user_data': 
                         self.add_software_config() # Fix this function
@@ -137,17 +148,15 @@ class Node(object):
 
     def add_floating_ip(self):
         """Associates a node with the node in the template"""
-        for router in self.data['properties']['networks'][router].keys():
-            if 'public_ip' in self.data['properties']['networks'][router].keys() or self.data['properties']['networks'][router]['public_ip'] == 'yes':
-                self.template['resources'].update(OrderedDict({
-                    self.node_name + '_floating_ip': {
-                        'type': 'OS::Neutron::FloatingIP',
-                        'properties': {
-                            'floating_network_id': { 'get_param': 'public_net' },
-                            'port_id': { 'get_resource': self.node_name + '_port0' } 
-                        }
-                    }
-                }))
+        self.template['resources'].update(OrderedDict({
+            self.node_name + '_floating_ip': {
+                'type': 'OS::Neutron::FloatingIP',
+                'properties': {
+                    'floating_network_id': { 'get_param': 'public_net' },
+                    'port_id': { 'get_resource': self.node_name + '_port0' } 
+                }
+            }
+        }))
                 
     def create_portsecurity_rule(self, port, protocol):
         """Creates a security rule"""
@@ -158,7 +167,7 @@ class Node(object):
             'port_range_max': port
         })
 
-    def add_security_group(self):
+    def add_security_group(self, idx, subnet):
         """Adds a security group resource to the template"""
         # ICMP is always allowed.
         rule_list = [
@@ -166,28 +175,26 @@ class Node(object):
                 'remote_ip_prefix': '0.0.0.0/0',
                 'protocol': 'icmp'
             })]
+        subnet = self.data['properties']['networks'][idx]['subnet']
+        resource_name = str(self.node_name + '_security_group_' + subnet)
 
-        for router in self.data['properties']['networks']:
-            subnet = self.data['properties']['networks'][router]['subnet']
-            resource_name = str(self.node_name + '_security_group_' + subnet)
-
-            if 'port_security' not in self.data['properties']['networks'][router].keys():
-                rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
-                continue
-             
-            if 'tcp' in self.data['properties']['networks'][router]['port_security'].keys():
+        if 'port_security' not in self.data['properties']['networks'][idx].keys():
+            rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
+           # return rule_list
+        else:
+            if 'tcp' in self.data['properties']['networks'][idx]['port_security'].keys():
                 # All servers must have SSH even if not specified
-                if 22 not in self.data['properties']['networks'][router]['port_security']['tcp']:
+                if 22 not in self.data['properties']['networks'][idx]['port_security']['tcp']:
                     rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
 
-                for tcp_port in self.data['properties']['networks'][router]['port_security']['tcp']:
+                for tcp_port in self.data['properties']['networks'][idx]['port_security']['tcp']:
                     rule_list.append(self.create_portsecurity_rule(tcp_port, 'tcp'))
 
             else:
                 rule_list.append(self.create_portsecurity_rule(22, 'tcp'))
 
-            if 'udp' in self.data['properties']['networks'][router]['port_security'].keys(): 
-                for udp_port in self.data['properties']['networks'][router]['port_security']['udp']:
+            if 'udp' in self.data['properties']['networks'][idx]['port_security'].keys(): 
+                for udp_port in self.data['properties']['networks'][idx]['port_security']['udp']:
                     rule_list.append(self.create_portsecurity_rule(udp_port, 'udp'))
 
             # Security group Heat resource
@@ -199,19 +206,15 @@ class Node(object):
             }
         }})
         self.template['resources'].update(secgrp)
+        return resource_name
 
     def add_software_config(self): # It should be possible to select which files are used. Need to fix this.
         config = OrderedDict({
                 'str_replace': {
-                    'template': { 'get_file': 'lib/testing/foo.sh' },
+                    'template': { 'get_file': '../lib/testing/foo.sh' },
                     'params': {
                         '__puppet_master_ip__': { 'get_attr': ['management', 'puppet_master_ip']}
                     }
                 }
         })
-      #  self.template['parameters'].update(OrderedDict({
-      #      'puppet_master_ip': {
-      #          'type': 'string'
-      #      }
-      #  }))
         return config
