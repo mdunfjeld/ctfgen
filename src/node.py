@@ -19,15 +19,22 @@ class Node(object):
         self.initialize_node()
 
     def initialize_node(self):
+        """Heat resources are initialized from this function"""
         self.add_node(self.port_list)
+
         if 'networks' in self.data['properties'].keys() and self.subnet_count is not 0:
-            self.add_node_ports(self.net, self.subnet)
+            for idx in range(0, self.subnet_count):
+                router = self.data['properties']['networks'][idx]['router']
+                subnet = self.data['properties']['networks'][idx]['subnet']
+                self.add_node_ports(idx, router, subnet)
 
         if 'public_ip' in self.data['properties'].keys() and self.data['properties']['public_ip'] is True:
             self.add_floating_ip()
 
     def count_subnets(self): 
-        if not 'networks' in self.data['properties'].keys():
+        if 'properties' not in self.data.keys() or self.data['properties'] is None:
+            return 0
+        elif 'networks' not in self.data['properties'].keys():
             return 0
         elif self.data['properties']['networks'] == None:
             return 0
@@ -70,23 +77,26 @@ class Node(object):
                 return 'linux'
         return None
 
-    def add_node_ports(self, net, subnet1):
-        for port_number in range(0, self.subnet_count):
-            router = str(self.data['properties']['networks'][port_number]['router'])
-            subnet = str(self.data['properties']['networks'][port_number]['subnet'])
-            port_name = str(self.node_name + '_port' + str(port_number))
-            port = OrderedDict({
-            port_name: {
-                'type': 'OS::Neutron::Port',
-                'properties': {
-                    'network': { 'get_resource': str(router + '-net') },
-                    'security_groups': [{ 'get_resource': self.add_security_group(port_number, subnet)}],
-                    'fixed_ips': [{
-                        'subnet_id': { 'get_resource': subnet }
-                    }]
-                }}
-            })
-            self.template['resources'].update(port)
+    def add_node_ports(self, idx, router, subnet):
+        if router == 'management' and subnet == 'attack_defense_subnet':
+            subnet_id  = { 'get_attr': ['management', subnet ]}
+            network_id = { 'get_attr': ['management', 'attack_defense_net']}
+        else:
+            subnet_id  = { 'get_resource': subnet }
+            network_id = { 'get_resource': str(router + 'net')}
+        port_name = str(self.node_name + '_port' + str(idx))
+        port = OrderedDict({
+        port_name: {
+            'type': 'OS::Neutron::Port',
+            'properties': {
+                'network': network_id,
+                'security_groups': [{ 'get_resource': self.add_security_group(idx, subnet)}],
+                'fixed_ips': [{
+                    'subnet_id': subnet_id
+                }]
+            }}
+        })
+        self.template['resources'].update(port)
 
 
 
