@@ -60,8 +60,8 @@ resources:
           - 53
       - router: router01
         subnet: dmz-lan
-      role:                                     # Optional - 
-        name: web                               # Name will be used to look up corresponding file. Must exist. 
+      role:                                     # Optional
+        name: web                               
       userAccount:                              # Optional - Define User accounts on the system 
         type: employee                          # 
         name: John Doe

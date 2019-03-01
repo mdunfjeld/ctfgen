@@ -19,8 +19,8 @@ resources:
     type: node                              
     properties:
       networks:                               
-        router01:                              
-          subnet: ctf-lan                                    
+      - management-router:                              
+        subnet:                                     
   
   some-vulnerability:
     type: vulnerability

@@ -20,25 +20,24 @@ scenario:
 
 resources:
   
-  
   ubuntu-node:                                  # Required - Object name is used to refer to this object from elsewhere
     type: node                                  # Required - [node, router, vulnerability, ]
     properties:
       flavor: m1.medium                         # Optional - m1.medium and m1.small is default for Windows and Linux respectively
       os: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64         # Required - The OS. Maps to images in OpenStack       
+      public_ip: no                         # Optional - Whether or not the node should have a Floating IP
       networks:                                 # Required - Can be empty if Node is not connected to any networks.
-        router01:                               # Required - The router to connect to
-          subnet: ctf-lan                       # Required - Comma separated list e.g subnet: a,b,c
-          public_ip: no                         # Optional - Whether or not the node should have a Floating IP
-          port_security:                        # Required - 
-            tcp:                                # Optional 
-            - 22
-            - 80
-            - 8080
-           # udp:
-           # - 53
-      role:                                     # Optional - 
-        name: web                               # Name will be used to look up corresponding file. Must exist. 
+      - router01:                               # Required - The router to connect to
+        subnet: ctf-lan                       # Required - Comma separated list e.g subnet: a,b,c
+        port_security:                        # Required - 
+          tcp:                                # Optional 
+          - 22
+          - 80
+          - 8080
+          udp:
+          - 53
+      role:                                     # Optional
+        name: web                               
       userAccount:                              # Optional - Define User accounts on the system 
         type: employee                          # 
         name: John Doe
