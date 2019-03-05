@@ -4,7 +4,7 @@ description: management template for attack-defense scenarios
 parameters:
   public_net: {type: string, default: ntnu-internal}
   puppet-master_server_name: {type: string, default: puppet-master}
-  puppet-master_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 } #CentOS 7.5 x86_64 }
+  puppet-master_image: {type: string, default: CentOS 7.5 x86_64 } #Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 } #CentOS 7.5 x86_64 }
   puppet-master_flavor: {type: string, default: m1.medium}
   key_name: {type: string, default: testkey }
 
@@ -35,7 +35,7 @@ resources:
       user_data_format: RAW
       user_data:
         str_replace:
-          template: { get_file: ../bootstrap/puppet-master.sh }
+          template: { get_file: ../scripts/puppet-master.sh }
           params:
             __teststring__: "This script should eventually do something useful..."
 
@@ -54,7 +54,7 @@ resources:
       rules:
       - {remote_ip_prefix: 0.0.0.0/0, protocol: icmp}
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
-      - {remote_ip_prefix: 0.0.0.0/0, protocol: udp, port_range_min: 8140, port_range_max: 8140}
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8140, port_range_max: 8140}
 
   management:
     type: OS::Neutron::Router
