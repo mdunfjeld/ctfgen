@@ -1,0 +1,17 @@
+heat_template_version: 2015-10-15
+description: This template is created dynamically by the scenario DSL interpreter
+parameters:
+  public_net:
+    type: string
+    default: ntnu-internal
+  
+
+resources:
+  neutron-net:
+    type: OS::Neutron::Net
+    properties:
+      name: CTF-Net
+
+outputs:
+  puppetmaster_ip:
+    value: { get_attr: [management, puppet_master_ip]}
