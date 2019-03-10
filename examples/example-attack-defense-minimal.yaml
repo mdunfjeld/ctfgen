@@ -15,25 +15,27 @@ scenario:
     phases:
 
 resources:
-  node01:          
+  Team01:          
     type: node                              
     properties:
-      networks:                               
-      - router01:                              
-        subnet: ctf-lan                                    
-
-  router01:
-    type: router                    
-    properties:
       networks:
-        ctf-lan:
-          cidr: 192.168.40.0/24
-          gatewayIP: 192.168.40.1
+      - router: management
+        subnet: attack_defense_subnet
+      public_ip: true
 
-  router02:
-    type: router                    
+  SomeTeamName:
+    type: team
     properties:
-      networks:
-        dmz-lan:
-          cidr: 192.168.41.0/24
-          gatewayIP: 192.168.41.1
+      members:
+      - team1_member1
+      - team1_member2
+      email: foo@bar.com
+
+  AnotherTeam:
+    type: team
+    properties:
+      members:
+      - team2_member1
+      - team2_member2
+      email: foo@example.com
+    

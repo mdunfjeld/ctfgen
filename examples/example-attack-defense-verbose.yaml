@@ -43,7 +43,7 @@ resources:
     DeliveryMethod: email
     file: foo
   
-  ubuntu-node:                                  # Required - Object name is used to refer to this object from elsewhere
+  node:                                         # Required - Object name is used to refer to this object from elsewhere
     type: node                                  # Required - [node, router, vulnerability, ]
     properties:
       flavor: m1.small                          # Optional - m1.medium and m1.small is default for Windows and Linux respectively
@@ -76,6 +76,19 @@ resources:
     properties:                                 # The idea here is to have vulnerability specific properties that can override what is default in the DB.
       bash_version: x.y.z                       # Optional 
 
+  SomeTeamName:
+    type: team
+    properties:
+      members:
+      - team1_member1
+      - team1_member2
+      email: foo@bar.com
 
-  
+  AnotherTeam:
+    type: team
+    properties:
+      members:
+      - team2_member1
+      - team2_member2
+      email: foo@example.com  
 
