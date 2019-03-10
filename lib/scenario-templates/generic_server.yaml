@@ -1,0 +1,73 @@
+heat_template_version: 2016-10-14
+
+description: Generic server without a floating IP
+
+
+parameters:
+  srv_name:
+    type: string
+    description: Name of the server
+  srv_flavor:
+    type: string
+    description: Flavor of the server
+    default: m1.medium 
+  srv_image:
+    type: string
+    description: Which image the server should use
+    default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 #CentOS 7.5 x86_64
+  srv_key_name:
+    type: string
+    description: Keypair which is pushed into the server
+  srv_net:
+    type: string
+    description: UUID of network
+  srv_subnet:
+    type: string
+    description: UUID of subnet
+  puppetmaster_ip:
+    type: string
+    description: Ip address of puppetmaster machine
+#  puppetmaster_name:
+#    type: string
+#    description: Name of the puppetmaster
+  security_groups:
+      type:  comma_delimited_list
+      description: Array of security groups
+#  puppet_environment:
+#     type: string
+#     description: Puppet environment
+#     default: testing # TODO: Change or add to higher hier
+
+
+resources:
+  generic_server_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: srv_net }
+      security_groups: { get_param: security_groups }
+      fixed_ips:
+         - subnet: { get_param: srv_subnet } 
+
+  generic_server:
+    type: OS::Nova::Server
+    properties:
+      name: { get_param: srv_name }
+      flavor: { get_param: srv_flavor }
+      image: { get_param: srv_image }
+      key_name: { get_param: srv_key_name }
+      networks: 
+        - port: { get_resource: generic_server_port }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: { get_file: ../scripts/testing.sh }
+          params:
+            puppetmaster_ip_address: { get_param: puppetmaster_ip }
+            __name__: { get_param: srv_name }
+
+outputs:
+  generic_server_port_id:
+    value: { get_resource: generic_server_port }
+
+  generic_server_ip: 
+    value: { get_attr: [generic_server, first_address] }
