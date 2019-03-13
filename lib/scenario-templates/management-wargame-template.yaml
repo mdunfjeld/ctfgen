@@ -26,10 +26,6 @@ resources:
   manager:
     type: OS::Nova::Server
     properties:
-      config_drive: true
-      personality:
-        privkey: { get_file: ../../ansible_deploy_key }
-      metadata: { 'group': 'manager' }
       name: {get_param: manager_server_name}
       image: {get_param: manager_image}
       flavor: {get_param: manager_flavor}
@@ -42,7 +38,7 @@ resources:
           template: { get_file: ../scripts/manager2.sh }
           params:
             __teststring__: "This script should eventually do something useful..."
-            
+
   manager_port0:
     type: OS::Neutron::Port
     properties:
@@ -90,6 +86,9 @@ resources:
     properties:
       name: ctf-lan
       network_id: {get_resource: management-net}
+      personality:
+        privkey: { get_file: ../../ansible_deploy_key }
+      metadata: { 'group': 'manager' }
       cidr: {get_param: ctf-lan_net_cidr}
       gateway_ip: {get_param: ctf-lan_net_gateway}
       allocation_pools:
@@ -110,7 +109,7 @@ resources:
 
 outputs:
   manager_ip:
-    description: IP address of manager
+    description: IP address of puppet master 
     value: { get_attr: [ manager, first_address ]}
   ctf_subnet:
     description: ID of management subnet_id
