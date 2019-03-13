@@ -1,7 +1,7 @@
 import oyaml as yaml
 import sys
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from src.node import Node
 from src.router import Router
 from src.helpers import debug_yaml  # For debugging only
@@ -18,7 +18,7 @@ class Scenario(object):
         self.allocated_subnets = []
         self.node_list = []
         self.router_list = []
-
+        self.ansible_inventory = self.initialize_ansible_inventory()
         self.initialize_scenario(self.type, self.data)
 
     def initialize_scenario(self, stype, data):
@@ -43,7 +43,7 @@ class Scenario(object):
         """Get a list of valid resource objects for the specified scenario type"""
         foo = {
             'jeopardy': ['vulnerability'],
-            'attack-defense': ['node', 'vulnerability', 'team', 'agent', 'objective' ],
+            'attack-defense': ['node', 'vulnerability', 'team', 'agent', 'objective', 'service'],
             'redteam-vs-blueteam': ['node', 'router', 'service', 'team', 'agent', 'vulnerability', 'user', 'objective', 'rules'],
             'wargame': ['service', 'vulnerability', 'node']
         }
@@ -96,16 +96,37 @@ class Scenario(object):
             if data['resources'][team]['type'] == 'team':
                 yield team, data['resources'][team]
 
+    def initialize_ansible_inventory(self):
+        return OrderedDict({
+            'long_node_names': [],
+            'inventory':{
+                'manager': {
+                    'hosts': [],
+                },
+            }
+        })  
+    
+    def update_ansible_inventory_skeleton(self, inventory, node_name, full_node_name):
+        inventory['long_node_names'].append(full_node_name)
+        if node_name not in inventory['inventory'].keys():
+            inventory.update(OrderedDict({
+                str(node_name): {
+                    'hosts': [],
+                }
+            }))            
+
     def attack_defense_create(self, data):
         for team_name, team_data in self.get_teams(data): # Is team_data needed?
             for device_name in data['resources']:
                 if data['resources'][device_name]['type'] == 'node':
+                    full_node_name = '{}_{}'.format(team_name, device_name)
                     node = Node(
                         data['resources'][device_name], 
-                        '{}_{}'.format(team_name, device_name), 
+                        full_node_name,
                         self.template
                     )
                     self.node_list.append(node)
+                    self.update_ansible_inventory_skeleton(self.ansible_inventory, device_name, full_node_name)
 
     def redteam_blueteam_create(self, data):
         """Create the heat infrastructure"""
