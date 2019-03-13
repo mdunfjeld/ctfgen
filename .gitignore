@@ -1,2 +1,3 @@
 ansible_deploy_key
 __pycache__
+./data
