@@ -20,7 +20,10 @@ pip3 install python-openstackclient
 ```
 ### Usage
 ```
-python3 main.py examples/example-attack-defense-minimal.yaml --debug
-python3 py3-env/bin/openstack stack create -t templates/debug.yaml teststack
+# Remember to source OpenStack RC file first
+python3 main.py -f examples/example-attack-defense-minimal.yaml --debug --run
 ```
 
+### Notes
+* Until deploy key creation can be implemented properly the program is dependent on linux.
+* Openstack VM images must have cloud-init
