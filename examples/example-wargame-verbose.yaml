@@ -1,56 +1,15 @@
 
-options:
-  cloud-platform: heat
-  heat:
-    authenticator: /path/to/openstack-rc-file
-
 scenario:                                    
-  type: wargame                          # Required - Possible values: {generic, jeopardy, attack-defense, Wargame, redteam-vs-blueteam} add red-team only?
+  type: wargame
   properties:
     name: Fancy-name-of-CTF
     startDate: 01.01.1970
     endDate: 07.01.1970
     startTime: 12:00
     endtime: 23:59
-    agents:                                     # Agents are added as a property of a scenario
-      - ddos-start
-      - reporting
-    phases: 
-      - Initial
 
 resources:
   
-  ubuntu-node:                                  # Required - Object name is used to refer to this object from elsewhere
-    type: node                                  # Required - [node, router, vulnerability, ]
-    properties:
-      flavor: m1.medium                         # Optional - m1.medium and m1.small is default for Windows and Linux respectively
-      os: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64         # Required - The OS. Maps to images in OpenStack       
-      public_ip: no                         # Optional - Whether or not the node should have a Floating IP
-      networks:                                 # Required - Can be empty if Node is not connected to any networks.
-      - router01:                               # Required - The router to connect to
-        subnet: ctf-lan                       # Required - Comma separated list e.g subnet: a,b,c
-        port_security:                        # Required - 
-          tcp:                                # Optional 
-          - 22
-          - 80
-          - 8080
-          udp:
-          - 53
-      role:                                     # Optional
-        name: web                               
-      userAccount:                              # Optional - Define User accounts on the system 
-        type: employee                          # 
-        name: John Doe
-        groups:                                 # Optional - Which groups the user should be a member of
-          - www-data
-          - employees
-      vulnerability:                            # Optional - Which vulnerabilities should the Node have.
-        - shellshock                            # Required - Name is used to fetch vulnerabiltiy from DB. If not also declared as a resource, the DB default is used.
-        - heartbleed
-      
-  shellshock:                                   # Object of type vulnerability. This definition will override the default
-    type: vulnerability                   
-    properties:                                 # The idea here is to have vulnerability specific properties that can override what is default in the DB.
-      bash_version: x.y.z                       # Optional 
+  
 
 

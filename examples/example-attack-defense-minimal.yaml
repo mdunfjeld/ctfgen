@@ -1,9 +1,3 @@
-
-options:
-  cloud-platform: heat
-  heat:
-    authenticator: /path/to/openstack-rc-file
-
 scenario:                                  
   type: attack-defense    
   properties:
@@ -15,7 +9,15 @@ scenario:
     phases:
 
 resources:
-  Team01:          
+  gameserver:          
+    type: node                              
+    properties:
+      networks:
+      - router: management
+        subnet: attack_defense_subnet
+      public_ip: true
+
+  kali:          
     type: node                              
     properties:
       networks:

@@ -1,9 +1,4 @@
 
-options:
-  cloud-platform: heat
-  heat:
-    authenticator: /path/to/openstack-rc-file
-
 scenario:                                  
   type: jeopardy    
   properties:

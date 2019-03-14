@@ -1,9 +1,4 @@
 
-options:
-  cloud-platform: heat
-  heat:
-    authenticator: /path/to/openstack-rc-file
-
 scenario:                                  
   type: wargame    
   properties:
@@ -14,13 +9,7 @@ scenario:
     endtime: 23:59
     phases:
 
-resources:
-  node01:          
-    type: node                              
-    properties:
-      networks:                               
-      - management-router:                              
-        subnet:                                     
+resources:                      
   
   some-vulnerability:
     type: vulnerability

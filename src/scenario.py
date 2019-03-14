@@ -10,11 +10,11 @@ from src.helpers import prettyprint # For debugging only
 
 class Scenario(object):
 
-    def __init__(self, data):
+    def __init__(self, data, platform):
         self.data = data
         self.template = self.get_scenario_template()
         self.type = self.data['scenario']['type']
-        self.platform = self.check_platform(self.data)
+        self.platform = platform
         self.allocated_subnets = []
         self.node_list = []
         self.router_list = []
@@ -102,11 +102,11 @@ class Scenario(object):
                     full_node_name = '{}_{}'.format(team_name, device_name)
                     node = Node(
                         data['resources'][device_name], 
-                        full_node_name,
+                        full_node_name, 
                         self.template,
-                        device_name
+                        device_name 
                     )
-                    self.node_list.append(node)
+                    self.node_list.append(full_node_name)
 
     def redteam_blueteam_create(self, data):
         """Create the heat infrastructure"""

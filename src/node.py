@@ -241,7 +241,7 @@ class Node(object):
         """This one probably needs more work"""
         config = OrderedDict({
                 'str_replace': {
-                    'template': { 'get_file': '../lib/scripts/ubuntu_boot.sh' },
+                    'template': { 'get_file': '../lib/scripts/testing.sh' },
                     'params': {
                         '__manager_ip__': { 'get_attr': ['management', 'manager_ip']}
                     }

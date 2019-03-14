@@ -51,7 +51,7 @@
 # Also it is possible to pass the correct user by setting an ansible_user: $myuser
 # metadata attribute.
 
-import argparse
+import subprocess
 import collections
 import os
 import sys
@@ -70,9 +70,6 @@ CONFIG_FILES = ['/etc/ansible/openstack.yaml', '/etc/ansible/openstack.yml']
 
 def get_groups_from_server(server_vars, namegroup=True):
     groups = []
-
-    region = server_vars['region']
-    cloud = server_vars['cloud']
     metadata = server_vars.get('metadata', {})
 
     # Check if group metadata key in servers' metadata
@@ -102,6 +99,21 @@ def append_hostvars(hostvars, groups, key, server, namegroup=False):
         hostvars[key]['ansible_user'] = metadata['ansible_user']
 
     for group in get_groups_from_server(server, namegroup=namegroup):
+        if server['name'] in node_list or server['name'] in mgmt_nodes:
+            host = collections.OrderedDict({
+                    str(server['interface_ip']): None
+            })
+            if group not in myservers['all']['children'].keys():
+                myservers['all']['children'].update({
+                    str(group): {
+                        'hosts': {
+
+                        }
+                    }
+                })
+                myservers['all']['children'][group]['hosts'].update(host)
+            else:
+                myservers['all']['children'][group]['hosts'].update(host)
         groups[group].append(key)
 
 def get_host_groups_from_cloud(inventory):
@@ -185,7 +197,24 @@ class Foo(object):
         self.cloud = None
         self.debug = False
 
-def create_inventory():
+def write_file(data):
+    with open(os.path.join('data', 'hosts.json'), 'w') as file:
+        f = json.dumps(data, ensure_ascii=True)
+        file.write(str(f))
+
+def create_inventory(nodes, mgmt):
+    global myservers
+    global mgmt_nodes
+    global node_list
+    mgmt_nodes = mgmt
+    node_list = nodes
+    myservers = collections.OrderedDict({
+        'all': {
+            'children': {
+
+            }
+        }
+    })
     args = Foo()
     try:
         # openstacksdk library may write to stdout, so redirect this
@@ -213,7 +242,7 @@ def create_inventory():
         sys.stdout = sys.__stdout__
         if args.list:
             output = get_host_groups(inventory, refresh=args.refresh, cloud=args.cloud)
-        return output
+        return myservers
     except sdk.exceptions.OpenStackCloudException as e:
         sys.stderr.write('%s\n' % e.message)
         sys.exit(1)
