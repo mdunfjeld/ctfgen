@@ -4,6 +4,14 @@ parameters:
   public_net:
      type: string
      default: ntnu-internal    
+  ansible_group:
+    type: string
+    description: Assign an Ansible group to the nodes through metadata.
+    default: docker
+  docker_hosts:
+     type: string
+     description: The number of docker hosts to spawn
+     default: 2
   docker_server_name:
     type: string
     description: Name of the docker server
@@ -23,7 +31,7 @@ resources:
   docker_servers:
     type: OS::Heat::ResourceGroup
     properties:
-      count: 2
+      count: { get_param: docker_hosts }
       resource_def:
         type: ../lib/scenario-templates/generic_server_floating.yaml
         properties:
@@ -38,7 +46,8 @@ resources:
           srv_subnet: { get_attr: [management, ctf_subnet ] }
           security_groups:
             - { get_resource: docker_security_group }
-          puppetmaster_ip: { get_attr: [management, puppet_master_ip] }
+          puppetmaster_ip: { get_attr: [management, manager_ip] }
+          metadata_group: { get_param: ansible_group }
 
   docker_security_group:
     type: OS::Neutron::SecurityGroup
@@ -56,3 +65,8 @@ resources:
           port_range_min: 1337 
           port_range_max: 1360
 
+outputs:
+  manager_ip:
+    value: { get_attr: [ management, manager_ip ]}
+
+  

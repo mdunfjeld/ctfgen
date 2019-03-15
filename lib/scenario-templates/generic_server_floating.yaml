@@ -28,10 +28,9 @@ parameters:
   security_groups:
       type:  comma_delimited_list
       description: Array of security groups
-#  puppet_environment:
-#     type: string
-#     description: Puppet environment
-#     default: testing # TODO: Change or add to higher hier
+  metadata_group:
+    type: string
+    description: Ansible group
 
 
 resources:
@@ -46,6 +45,10 @@ resources:
   generic_server:
     type: OS::Nova::Server
     properties:
+      config_drive: true
+      personality: 
+        pubkey: { get_file: ../../ansible_deploy_key.pub }
+      metadata: { 'group': { get_param: metadata_group } }
       name: { get_param: srv_name }
       flavor: { get_param: srv_flavor }
       image: { get_param: srv_image }
@@ -69,6 +72,9 @@ resources:
 outputs:
   generic_server_port_id:
     value: { get_resource: generic_server_port }
+
+ # generic_server_floating_ip:
+ #   value: { get_resource: }
 
   generic_server_ip: 
     value: { get_attr: [generic_server, first_address] }
