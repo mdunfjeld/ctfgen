@@ -13,6 +13,7 @@ from src.scenario import Scenario
 from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
 from src.openstack_inventory_plugin import create_inventory
+from tqdm import tqdm
 
 def load_config_file(filepath):
     try:
@@ -63,36 +64,71 @@ def get_config_items(config, section, item):
     item = str(config.get(section, item)).rsplit(' ')
     return [str(x).strip(',') for x in item ]
 
+def wait(seconds=90):
+    wait_time = int(seconds * 10)
+    with tqdm(total=wait_time, dynamic_ncols=True, bar_format='{desc} {elapsed} {bar}') as pbar:
+        pbar.set_description("Waiting {} seconds for VMs to spawn...".format(seconds))
+        for i in range(wait_time):
+            sleep(0.1)
+            pbar.update(1)
+
+def write(filepath, some_list):
+    with open(filepath, 'w') as file:
+        for line in some_list:
+            file.write(line + '\n')
+
 def main():
     parser = argparse.ArgumentParser()
+    group1 = parser.add_mutually_exclusive_group()
     parser.add_argument('-f', '--file', nargs=1, help="Input yaml file")
-    parser.add_argument('-t', '--test', action='store_true', help='temp argument for testing purposes')
     parser.add_argument('--debug', action='store_true', help="Changes filename if set")
-    parser.add_argument('-r', '--run', action='store_true', help="Launch in openstack")
+    group1.add_argument('-r', '--run', action='store_true', help="Launch in openstack")
+    group1.add_argument('-i', '--inventory', action='store_true', help='Create inventory file')
+
+    parser.add_argument('-t', '--test', action='store_true')
+    
     args = parser.parse_args()
     config = get_config()
 
     data = OrderedDict()
     create_deploy_key()
-    data = load_config_file(args.file[0])
+    if args.file:
+        data = load_config_file(args.file[0])
+
     platform = config.get('DEFAULT', 'platform')
 
     global network_template
     global management_nodes 
     management_nodes = get_config_items(config, str(data['scenario']['type'].upper()), 'management_nodes')
 
+    if args.inventory:
+        path = os.path.join('data', 'node_list.txt')
+        with open(path, 'r') as file:
+            node_list = [node.strip() for node in file]
+            print('Populating inventory file...' )
+        inventory = create_inventory(node_list, management_nodes)
+        print(inventory)
+        sys.exit(0)
+
     scenario = Scenario(data, platform)
     node_list = scenario.node_list
+
+    write(os.path.join('data', 'node_list.txt'), node_list)
     network_template = scenario.get_template()
     
     filename = write_template_to_file(network_template, scenario.platform, debug=args.debug)
+
+    if args.test:
+        sys.exit(0)
+
     if args.run:
         stackname='test123'
         command = 'openstack stack create -t {} --parameter key_name=testkey {}'.format(filename, stackname)
         subprocess.run(command, shell=True)
         spawn_wait_time = int(config.get('DEFAULT', 'spawn_wait_time'))
-        sleep(spawn_wait_time)
+        wait(spawn_wait_time)
 
+        print('Populating inventory file...')
         inventory = create_inventory(node_list, management_nodes)
         write2(inventory)
 
