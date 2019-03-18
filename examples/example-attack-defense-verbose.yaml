@@ -2,42 +2,17 @@ scenario:
   type: attack-defense
   properties:
     name: Fancy-name-of-CTF
-    number_of_teams: 3
     startDate: 01.01.1970
     endDate: 07.01.1970
     startTime: 12:00
     endtime: 23:59
-    agents:
-      - ddos-start
-      - reporting
-    phases: 
-      - Initial
+    teams:
+      - SomeTeamName
+      - AnotherTeam
 
 resources:
-  ddos-start:
-    type: agent               
-    agentType:
-    description: >
-      This is the description that describes the purpose of this event. This is
-      a multiline description.
-    activateCondition:                      
-      type: time
-      timeafterstart: 01:00:00            
-    DeliveryMethod: Puppet
-    file: attack-module.pp 
-
-  reporting:
-    type: agent
-    agentType: report
-    description: >
-      foobar
-    activateCondition: 
-      type: objectiveComplete
-      objective: objectiveXX
-    DeliveryMethod: email
-    file: foo
   
-  node:                                        
+  gameserver:                                        
     type: node                                  
     properties:
       flavor: m1.small                        
@@ -67,6 +42,14 @@ resources:
         - shellshock
         - heartbleed
       
+  kali:          
+    type: node                              
+    properties:
+      networks:
+      - router: management
+        subnet: attack_defense_subnet
+      public_ip: true
+
   shellshock:
     type: vulnerability                   
     properties:
