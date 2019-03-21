@@ -10,15 +10,19 @@ from src.helpers import prettyprint # For debugging only
 
 class Scenario(object):
 
-    def __init__(self, data, platform):
+    def __init__(self, data, platform, config=None):
         self.data = data
         self.template = self.get_scenario_template()
         self.type = self.data['scenario']['type']
+        self.config = config 
         self.platform = platform
+        self.docker_hosts = self.get_docker_hosts()
+        self.ansible_requirements = self.get_requirements_template()
         self.allocated_subnets = []
         self.node_list = []
         self.router_list = []
         self.initialize_scenario(self.type, self.data)
+
 
     def initialize_scenario(self, stype, data):
         if self.scenario_resources_are_valid(data) is False:
@@ -31,10 +35,21 @@ class Scenario(object):
         elif self.type == 'wargame':
             self.wargame_create(data)
         elif self.type == 'attack-defense':
-            self.attack_defense_create(data)
+            self.attack_defense_create(data, self.ansible_requirements)
         else:
             self.redteam_blueteam_create(data)
 
+    def get_requirements_template(self):
+        filename = str(self.type + '_requirements.yaml')
+        with open(os.path.join('lib', 'ansible', filename), 'r') as file:
+            return yaml.load(file)
+
+    def get_docker_hosts(self):
+        if 'docker_hosts' in self.data['scenario']['properties'].keys():
+            return int(self.data['scenario']['properties']['docker_hosts'])
+        else:
+            return 2    # Default number of docker hosts
+            
     def get_template(self):
         return self.template
 
@@ -76,16 +91,18 @@ class Scenario(object):
     def get_scenario_template(self):
         """Opens the appropriate heat template based on scenario type"""
         if self.scenario_type_is_valid():
-            type = str(self.data['scenario']['type']).lower()
-            path = os.path.join('lib', 'scenario-templates', type + '-template.yaml')
+            stype = str(self.data['scenario']['type']).lower()
+            path = os.path.join('lib', 'scenario-templates', stype + '-template.yaml')
         else:
             print('Invalid scenario type')
             sys.exit(1)
         with open(path) as file:
             return yaml.load(file)
-    
+
     def jeopardy_create(self, data):
-        pass
+        self.template['parameters']['docker_hosts']['default'] = str(self.docker_hosts)
+        self.node_list = ['Docker{}'.format(x) for x in range(0, self.docker_hosts)]
+
 
     def wargame_create(self, data):
         pass
@@ -95,18 +112,30 @@ class Scenario(object):
             if data['resources'][team]['type'] == 'team':
                 yield team, data['resources'][team]
        
-    def attack_defense_create(self, data):
-        for team_name, team_data in self.get_teams(data): # Is team_data needed?
-            for device_name in data['resources']:
-                if data['resources'][device_name]['type'] == 'node':
+    def write_requirements(self, template):
+        with open(os.path.join('output', 'requirements.yaml'), 'w') as file:
+            f = yaml.dump(template)
+            file.write(f)
+
+    def attack_defense_create(self, data, requirements):
+        for device_name in data['resources']:
+            if data['resources'][device_name]['type'] == 'node':
+                service_file_created = False
+                for team_name, team_data in self.get_teams(data): # Is team_data needed?                
                     full_node_name = '{}_{}'.format(team_name, device_name)
                     node = Node(
-                        data['resources'][device_name], 
+                        data['resources'], 
                         full_node_name, 
                         self.template,
-                        device_name 
+                        device_name,
+                        service_file_created,
+                        requirements
                     )
+        
                     self.node_list.append(full_node_name)
+                    service_file_created = True
+                    requirements = node.get_requirements()
+                    self.write_requirements(requirements)
 
     def redteam_blueteam_create(self, data):
         """Create the heat infrastructure"""
