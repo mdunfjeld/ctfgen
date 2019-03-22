@@ -25,7 +25,7 @@ python3 main.py -f examples/example-attack-defense-minimal.yaml --debug --run
 ```
 
 ### Notes
-* Until deploy key creation can be implemented properly the program is dependent on linux.
+* Until deploy key creation can be implemented properly the program is dependent on ssh-keygen.
 * Openstack VM images must have cloud-init
 * Each node creates its own security group(s). In scenarios with many nodes we might exceed the quota limit for security groups.  
-* Ansible inventory is populated with IP addresses after the heat stack is created. Sufficient time must be allocated to ensure that all nodes have aquired an IP address. DNS is probably the solution to this problem.
+* Ansible inventory is populated with IP addresses after the heat stack is created. Sufficient time must be allocated to ensure that all nodes have aquired an IP address before attempting to populate the inventory. Perhaps DNS can be used to circumvent this.
