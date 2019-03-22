@@ -6,10 +6,10 @@
 
 """
 ********** EXAMPLE*********************************************************
-'id': [{
+'id': {
     'src': '',
     'name': 'role-name'
-}]
+}
 ***************************************************************************
 id: Used from the DSL to designate which software is to be installed. 
     Id must be unique
@@ -31,7 +31,7 @@ ansible_service_roles = {
 }
 
 ansible_vulnerability_roles = {
-    
+
 }
 
 
