@@ -18,7 +18,7 @@ name: The name the role will be installed as. Needed because the role will
         be referred to from other files. All roles MUST have a name.
 ***************************************************************************
 """
-ansible_roles = {
+ansible_service_roles = {
     'apache2': {
         'src': 'https://github.com/dunf/ansible-role-apache',
         'name': 'apache2-role'
@@ -28,6 +28,10 @@ ansible_roles = {
         'name': 'geerlingguy.docker'
     }
 
+}
+
+ansible_vulnerability_roles = {
+    
 }
 
 
