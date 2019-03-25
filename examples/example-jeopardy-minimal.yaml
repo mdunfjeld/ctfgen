@@ -10,7 +10,7 @@ scenario:
 
 resources:
   shellshock:                               
-    type: vulnerability                   
+    type: challenge                   
     
   challenge1:                               
-    type: vulnerability                   
+    type: challenge                   

@@ -10,7 +10,7 @@ scenario:
 
 resources:
   shellshock:                               
-      type: vulnerability                   
+      type: challenge                   
       properties:          
         description: Some description of the challenge/vulnerability               
         bash_version: x.y.z
@@ -19,7 +19,7 @@ resources:
         points: 10
 
   challenge1:                               
-    type: vulnerability                   
+    type: challenge                   
     properties:                         
       flag: flag{This is another flag}
       file: /path/to/file
