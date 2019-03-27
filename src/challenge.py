@@ -29,7 +29,7 @@ class Challenge(object):
                 'vars': {
                     'image': str(challenge_data['image']),
                     'name': str(challenge_data['name']),
-                    'public_ports': str(port)
+                    'public_port': str(port)
                 }
             })
             challenge_template[0]['tasks'].append(role)            
