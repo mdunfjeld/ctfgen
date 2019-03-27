@@ -16,6 +16,14 @@ resources:
       - router: management
         subnet: attack_defense_subnet
       public_ip: true
+      services:
+      - apache2
+      - docker
+
+  webservice:
+    type: service
+    properties:
+      name: apache2
 
   kali:          
     type: node                              

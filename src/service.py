@@ -16,8 +16,8 @@ class Service(object):
         self.service_resource = service_resource
        
 
-        if name in ansible_roles.keys():
-            service_data  = ansible_roles.get(name)
+        if name in ansible_service_roles.keys():
+            service_data  = ansible_service_roles.get(name)
             service_name_dsl = service_data['name']
 
             if not self.is_already_added(name, self.requirements):

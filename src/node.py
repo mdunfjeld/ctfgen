@@ -72,7 +72,7 @@ class Node(object):
             file.write(f)
 
     def initialize_service_template(self, ansible_group):
-        with open(os.path.join('lib', 'scenario-templates', 'node_software_template.yaml'), 'r') as file:
+        with open(os.path.join('lib', 'templates', 'node_software_template.yaml'), 'r') as file:
             data = yaml.load(file)
             data[0]['hosts'] = ansible_group
             return data

@@ -47,7 +47,7 @@ resources:
     properties:
       config_drive: true
       personality: 
-        pubkey: { get_file: ../../ansible_deploy_key.pub }
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
       metadata: { 'group': { get_param: metadata_group } }
       name: { get_param: srv_name }
       flavor: { get_param: srv_flavor }

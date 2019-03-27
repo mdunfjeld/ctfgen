@@ -1,0 +1,73 @@
+heat_template_version: 2015-10-15
+description: Empty template used by generator to create Lab environment
+parameters:
+  public_net:
+     type: string
+     default: ntnu-internal    
+  ansible_group:
+    type: string
+    description: Assign an Ansible group to the nodes through metadata.
+    default: docker
+  docker_hosts:
+     type: string
+     description: The number of docker hosts to spawn
+     default: 2
+  docker_server_name:
+    type: string
+    description: Name of the docker server
+    default: Docker
+  docker_server_flavor:
+    type: string
+    description: Flavor for docker server 
+    default: m1.small
+  key_name:
+    type: string
+    description: Name of ssh key to deploy
+
+resources:
+  management:
+    type: ../lib/templates/management-jeopardy-template.yaml
+
+  docker_servers:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: docker_hosts }
+      resource_def:
+        type: ../lib/templates/generic_server_floating.yaml
+        properties:
+          srv_name: 
+            str_replace:
+              template: $name%index%
+              params: 
+                $name: { get_param: docker_server_name }
+          srv_flavor: { get_param: docker_server_flavor }
+          srv_key_name: { get_param: key_name }
+          srv_net: { get_attr: [management, ctf_net ]}
+          srv_subnet: { get_attr: [management, ctf_subnet ] }
+          security_groups:
+            - { get_resource: docker_security_group }
+          puppetmaster_ip: { get_attr: [management, manager_ip] }
+          metadata_group: { get_param: ansible_group }
+
+  docker_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties: 
+      description: Allow traffic from haproxy to docker host
+      name: docker-server-security-group
+      rules: 
+        - {remote_ip_prefix: 0.0.0.0/0, protocol: icmp}
+        - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
+        - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 80, port_range_max: 80}
+        - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 443, port_range_max: 443}
+        - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8080, port_range_max: 8080}
+        - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8010}
+        - protocol: tcp
+          remote_ip_prefix: 0.0.0.0/0
+          port_range_min: 1337 
+          port_range_max: 1360
+
+outputs:
+  manager_ip:
+    value: { get_attr: [ management, manager_ip ]}
+
+  

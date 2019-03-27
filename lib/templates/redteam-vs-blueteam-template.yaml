@@ -4,7 +4,9 @@ parameters:
   public_net:
     type: string
     default: ntnu-internal
-
+  
 resources:
   management:
-    type: ../lib/scenario-templates/management-attack-defense-template.yaml
+    type: ../lib/templates/management-redteam-vs-blueteam-template.yaml
+
+  

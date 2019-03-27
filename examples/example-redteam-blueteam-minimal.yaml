@@ -1,9 +1,3 @@
-
-options:
-  cloud-platform: heat
-  heat:
-    authenticator: /path/to/openstack-rc-file
-
 scenario:                                  
   type: redteam-vs-blueteam    
   properties:

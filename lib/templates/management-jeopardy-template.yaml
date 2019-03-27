@@ -21,17 +21,17 @@ parameters:
 resources:
   management-net:
     type: OS::Neutron::Net
-    properties: {name: Attack & Defense Net }
+    properties: {name: CTF-Management-Net }
 
   manager:
     type: OS::Nova::Server
     properties:
-      name: {get_param: manager_server_name}
-      image: {get_param: manager_image}
       config_drive: true
       personality:
-        privkey: { get_file: ../../ansible_deploy_key }
+        privkey: { get_file: ../../output/ansible_deploy_key }
       metadata: { 'group': 'manager' }
+      name: {get_param: manager_server_name}
+      image: {get_param: manager_image}
       flavor: {get_param: manager_flavor}
       key_name: {get_param: key_name}
       networks:
@@ -42,7 +42,7 @@ resources:
           template: { get_file: ../scripts/manager2.sh }
           params:
             __teststring__: "This script should eventually do something useful..."
-
+            
   manager_port0:
     type: OS::Neutron::Port
     properties:
@@ -112,9 +112,9 @@ outputs:
   manager_ip:
     description: IP address of manager
     value: { get_attr: [ manager, first_address ]}
-  attack_defense_subnet:
+  ctf_subnet:
     description: ID of management subnet_id
     value: { get_resource: ctf-lan }
-  attack_defense_net:
+  ctf_net:
     description: ID of management network
     value: { get_resource: management-net }

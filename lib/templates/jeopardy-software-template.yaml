@@ -1,0 +1,11 @@
+---
+- hosts: <group>
+  become: true
+  roles:
+    - role: geerlingguy.ntp
+    - { role: geerlingguy.docker, docker_users: ubuntu }
+    - role: geerlingguy.pip
+      pip_package: python3-pip
+      pip_install_packages:
+        - docker
+  tasks: [] 

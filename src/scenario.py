@@ -4,6 +4,7 @@ import os
 from collections import OrderedDict, defaultdict
 from src.node import Node
 from src.router import Router
+from src.challenge import Challenge
 from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
 
@@ -31,7 +32,8 @@ class Scenario(object):
             sys.exit(1)
 
         if self.type == 'jeopardy':
-            self.jeopardy_create(data)
+            challenge_file = self.initialize_software_template('docker', self.type)
+            self.jeopardy_create(data, self.ansible_requirements, challenge_file)
         elif self.type == 'wargame':
             self.wargame_create(data)
         elif self.type == 'attack-defense':
@@ -56,7 +58,7 @@ class Scenario(object):
     def get_valid_types(self, stype):
         """Get a list of valid resource objects for the specified scenario type"""
         foo = {
-            'jeopardy': ['vulnerability'],
+            'jeopardy': ['challenge'],
             'attack-defense': ['node', 'vulnerability', 'team', 'agent', 'objective', 'service'],
             'redteam-vs-blueteam': ['node', 'router', 'service', 'team', 'agent', 'vulnerability', 'user', 'objective', 'rules'],
             'wargame': ['service', 'vulnerability', 'node']
@@ -92,16 +94,36 @@ class Scenario(object):
         """Opens the appropriate heat template based on scenario type"""
         if self.scenario_type_is_valid():
             stype = str(self.data['scenario']['type']).lower()
-            path = os.path.join('lib', 'scenario-templates', stype + '-template.yaml')
+            path = os.path.join('lib', 'templates', stype + '-template.yaml')
         else:
             print('Invalid scenario type')
             sys.exit(1)
         with open(path) as file:
             return yaml.load(file)
 
-    def jeopardy_create(self, data):
+    def initialize_software_template(self, ansible_group, stype):
+        """Identical to the function in node. Refactoring is needed"""
+        with open(os.path.join('lib', 'templates', str(stype) + '-software-template.yaml'), 'r') as file:
+            data = yaml.load(file)
+            data[0]['hosts'] = ansible_group
+            return data
+
+    def jeopardy_create(self, data, requirements, challenge_file):
         self.template['parameters']['docker_hosts']['default'] = str(self.docker_hosts)
         self.node_list = ['Docker{}'.format(x) for x in range(0, self.docker_hosts)]
+    
+        for challenge in data['resources'].keys():
+            c = Challenge(
+                challenge,
+                data['resources'][challenge],
+                challenge_file,
+                requirements
+            )
+            challenge_file = c.get_file()        
+            requirements = c.get_requirements()
+            
+        self.write_output(challenge_file, 'docker.yaml')   
+        self.write_output(requirements, 'requirements.yaml')
 
 
     def wargame_create(self, data):
@@ -112,8 +134,9 @@ class Scenario(object):
             if data['resources'][team]['type'] == 'team':
                 yield team, data['resources'][team]
        
-    def write_requirements(self, template):
-        with open(os.path.join('output', 'requirements.yaml'), 'w') as file:
+    def write_output(self, template, filename):
+        """There are a few write functions now. Should probably refactor"""
+        with open(os.path.join('output', filename), 'w') as file:
             f = yaml.dump(template)
             file.write(f)
 
@@ -135,7 +158,7 @@ class Scenario(object):
                     self.node_list.append(full_node_name)
                     service_file_created = True
                     requirements = node.get_requirements()
-                    self.write_requirements(requirements)
+                    self.write_output(requirements, 'requirements.yaml')
 
     def redteam_blueteam_create(self, data):
         """Create the heat infrastructure"""

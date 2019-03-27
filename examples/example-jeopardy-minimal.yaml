@@ -12,5 +12,5 @@ resources:
   shellshock:                               
     type: challenge                   
     
-  challenge1:                               
+  heartbleed:                               
     type: challenge                   

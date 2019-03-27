@@ -6,6 +6,7 @@ import os
 import argparse
 import configparser
 import subprocess
+import shutil
 from collections import OrderedDict
 from time import strftime, sleep
 
@@ -27,33 +28,33 @@ def load_config_file(filepath):
 
 def write_template_to_file(template, platform, debug=False):
     timestamp = strftime("%Y_%m_%d-%H_%M")
-    if not os.path.exists('templates'):
-        os.mkdir('templates')
+    if not os.path.exists('heat-output'):
+        os.mkdir('heat-output')
     if debug is True:
-        filename = os.path.join('templates', 'debug.yaml')
+        filename = os.path.join('heat-output', 'debug.yaml')
     else:
-        filename = os.path.join('templates', platform + '-stack-' + timestamp + '.yaml')
+        filename = os.path.join('heat-output', platform + '-stack-' + timestamp + '.yaml')
     with open(filename, 'w') as file:
         yaml_template = yaml.dump(template)
         file.write(str(yaml_template))
     return filename
 
-def write2(data):
-    with open(os.path.join('data', 'hosts.yaml'), 'w') as file:
+def write_yaml(data):
+    with open(os.path.join('output', 'hosts.yaml'), 'w') as file:
         yaml_template = yaml.dump(data)
         file.write(str(yaml_template))        
 
 def create_deploy_key():
     """This is a shortcut that should be replaced with a python version to avoid being limited to linux"""
-    privkey = 'ansible_deploy_key'
-    pubkey  = 'ansible_deploy_key.pub'       
+    privkey = 'output/ansible_deploy_key'
+    pubkey  = 'output/ansible_deploy_key.pub'       
     if os.path.exists(privkey) or os.path.exists(pubkey):
         os.remove(privkey)
         os.remove(pubkey)
-    subprocess.run('ssh-keygen -t ed25519 -f ansible_deploy_key -q -P ""', shell=True)
+    subprocess.run('ssh-keygen -t ed25519 -f output/ansible_deploy_key -q -P ""', shell=True)
     hostname = os.uname()[1]
     username = os.environ['USER']
-    subprocess.run('sed -i "s/{}@{}/Ansible-Deploy-Key/g" ansible_deploy_key.pub'.format(username, hostname), shell=True)
+    subprocess.run('sed -i "s/{}@{}/AnsibleDeployKey/g" output/ansible_deploy_key.pub'.format(username, hostname), shell=True)
 
 def get_config():
     config = configparser.ConfigParser()
@@ -90,6 +91,13 @@ def main():
     args = parser.parse_args()
     config = get_config()
 
+
+    if not os.path.exists('output'):
+        os.mkdir('output')
+    else:
+        shutil.rmtree('output')
+        os.mkdir('output')
+
     data = OrderedDict()
     create_deploy_key()
     if args.file:
@@ -101,6 +109,8 @@ def main():
     global management_nodes 
     management_nodes = get_config_items(config, str(data['scenario']['type'].upper()), 'management_nodes')
 
+
+
     if args.inventory:
         path = os.path.join('output', 'node_list.txt')
         with open(path, 'r') as file:
@@ -111,10 +121,7 @@ def main():
         sys.exit(0)
 
     scenario = Scenario(data, platform)
-    node_list = scenario.node_list
-
-    if not os.path.exists('output'):
-        os.mkdir('output')
+    node_list = scenario.node_list   
     write(os.path.join('output', 'node_list.txt'), node_list)
 
     network_template = scenario.get_template()
@@ -133,7 +140,7 @@ def main():
 
         print('Populating inventory file...')
         inventory = create_inventory(node_list, management_nodes)
-        write2(inventory)
+        write_yaml(inventory) # Should create a unified write function at some point. 
 
 if __name__ == '__main__':
     main()

@@ -13,12 +13,12 @@ resources:
       type: challenge                   
       properties:          
         description: Some description of the challenge/vulnerability               
-        bash_version: x.y.z
         flag: flag{This is the flag}
         prerequisites: 
         points: 10
+        port: 8010
 
-  challenge1:                               
+  heartbleed:                               
     type: challenge                   
     properties:                         
       flag: flag{This is another flag}

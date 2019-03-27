@@ -9,7 +9,7 @@
 'id': {
     'src': '',
     'name': 'role-name'
-}
+
 ***************************************************************************
 id: Used from the DSL to designate which software is to be installed. 
     Id must be unique
@@ -26,14 +26,31 @@ ansible_service_roles = {
     'docker': {
         'src': 'geerlingguy.docker',
         'name': 'geerlingguy.docker'
+    },
+    'nginx': {
+        'src': 'geerlingguy.nginx',
+        'name': 'geerlingguy.nginx'
     }
 
 }
 
-ansible_vulnerability_roles = {
+#ansible_vulnerability_roles = {
+    
+#}
 
+
+challenges = {
+    'shellshock': {
+        'image': 'hmlio/vaas-cve-2014-6271:latest',
+        'name': 'vaas-cve-2014-6271',
+        'port': "8080",
+    },
+    'heartbleed': {
+        'image': 'hmlio/vaas-cve-2014-0160',
+        'name': 'vaas-cve-2014-0160',
+        'port': '1337'
+    }
 }
-
 
 linux_image_list = [
     'CentOS 6 (1809) x86_64',                      
