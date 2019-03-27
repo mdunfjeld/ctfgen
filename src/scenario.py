@@ -111,16 +111,18 @@ class Scenario(object):
     def jeopardy_create(self, data, requirements, challenge_file):
         self.template['parameters']['docker_hosts']['default'] = str(self.docker_hosts)
         self.node_list = ['Docker{}'.format(x) for x in range(0, self.docker_hosts)]
-    
+        port_list = []
         for challenge in data['resources'].keys():
             c = Challenge(
                 challenge,
                 data['resources'][challenge],
                 challenge_file,
-                requirements
+                requirements,
+                port_list
             )
             challenge_file = c.get_file()        
             requirements = c.get_requirements()
+            port_list = c.get_port_list()
             
         self.write_output(challenge_file, 'docker.yaml')   
         self.write_output(requirements, 'requirements.yaml')
