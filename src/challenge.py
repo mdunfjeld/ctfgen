@@ -11,18 +11,21 @@ class Challenge(object):
         self.requirements = requirements       
         self.used_ports = used_ports
 
-
         if name in challenges:
             challenge_data = challenges.get(name)
             exposed_port = challenge_data['port']
 
             if 'properties' not in self.data.keys() or 'port' not in self.data['properties'].keys():
-                port, self.used_ports = self.assign_port_to_container(self.used_ports)
+                port = self.assign_port_to_container(self.used_ports)
+                self.used_ports.append(port)
             else:
-                port = self.data['properties']['port']    
+                port = self.data['properties']['port']
+                while port in self.used_ports:
+                    port += 1
+                self.used_ports.append(port)
+
 
             port_mapping = str(port) + ':' + str(exposed_port)
-
             role = OrderedDict({
                 'name': 'Installing challenge {}'.format(name), 
                 'include_role': {
@@ -48,9 +51,6 @@ class Challenge(object):
 
     def assign_port_to_container(self, ports):
         if len(ports) == 0:
-            ports.append(1337)
-            return 1337, ports
+            return 1337
         else:
-            p = ports[::-1][0] + 1
-            ports.append(p)
-            return p, ports
+            return ports[::-1][0] + 1
