@@ -35,7 +35,7 @@ resources:
       user_data_format: RAW
       user_data:
         str_replace:
-          template: { get_file: ../scripts/manager2.sh }
+          template: { get_file: ../scripts/manager.sh }
           params:
             __teststring__: "This script should eventually do something useful..."
 

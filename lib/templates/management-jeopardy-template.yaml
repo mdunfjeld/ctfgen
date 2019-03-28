@@ -29,6 +29,7 @@ resources:
       config_drive: true
       personality:
         privkey: { get_file: ../../output/ansible_deploy_key }
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
       metadata: { 'group': 'manager' }
       name: {get_param: manager_server_name}
       image: {get_param: manager_image}
@@ -39,7 +40,7 @@ resources:
       user_data_format: RAW
       user_data:
         str_replace:
-          template: { get_file: ../scripts/manager2.sh }
+          template: { get_file: ../scripts/manager.sh }
           params:
             __teststring__: "This script should eventually do something useful..."
             

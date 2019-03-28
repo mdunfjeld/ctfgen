@@ -64,6 +64,7 @@ import json
 import openstack as sdk
 from openstack.cloud import inventory as sdk_inventory
 from openstack.config import loader as cloud_config
+from src.helpers import debug_yaml
 
 CONFIG_FILES = ['/etc/ansible/openstack.yaml', '/etc/ansible/openstack.yml']
 
@@ -93,17 +94,18 @@ def append_hostvars(hostvars, groups, key, server, namegroup=False):
         ansible_ssh_host=server['interface_ip'],
         ansible_host=server['interface_ip'],
         openstack=server)
-
+    global manager_public
     metadata = server.get('metadata', {})
     if 'ansible_user' in metadata:
         hostvars[key]['ansible_user'] = metadata['ansible_user']
 
     for group in get_groups_from_server(server, namegroup=namegroup):
         if server['name'] in node_list or server['name'] in mgmt_nodes:
-            host = collections.OrderedDict({
-                    str(server['interface_ip']): None
-            })
+            host = collections.OrderedDict({str(server['interface_ip']): None })
             if group not in myservers['all']['children'].keys():
+
+                if group == 'manager':
+                    manager_public = server['public_v4']
                 myservers['all']['children'].update({
                     str(group): {
                         'hosts': {
@@ -242,7 +244,7 @@ def create_inventory(nodes, mgmt):
         sys.stdout = sys.__stdout__
         if args.list:
             output = get_host_groups(inventory, refresh=args.refresh, cloud=args.cloud)
-        return myservers
+        return myservers, manager_public
     except sdk.exceptions.OpenStackCloudException as e:
         sys.stderr.write('%s\n' % e.message)
         sys.exit(1)

@@ -78,6 +78,10 @@ def write(filepath, some_list):
         for line in some_list:
             file.write(line + '\n')
 
+def file_transfer(dir, ip):
+    command = 'scp -r -i output/ansible_deploy_key {} ubuntu@{}:'.format(dir, ip)
+    subprocess.run(command, shell=True)
+
 def main():
     parser = argparse.ArgumentParser()
     group1 = parser.add_mutually_exclusive_group()
@@ -94,9 +98,9 @@ def main():
 
     if not os.path.exists('output'):
         os.mkdir('output')
-    else:
-        shutil.rmtree('output')
-        os.mkdir('output')
+  #  else:
+  #      shutil.rmtree('output')
+  #      os.mkdir('output')
 
     data = OrderedDict()
     create_deploy_key()
@@ -109,15 +113,12 @@ def main():
     global management_nodes 
     management_nodes = get_config_items(config, str(data['scenario']['type'].upper()), 'management_nodes')
 
-
-
     if args.inventory:
         path = os.path.join('output', 'node_list.txt')
         with open(path, 'r') as file:
             node_list = [node.strip() for node in file]
             print('Populating inventory file...' )
-        inventory = create_inventory(node_list, management_nodes)
-        print(inventory)
+        inventory, manager_public_ip = create_inventory(node_list, management_nodes)
         sys.exit(0)
 
     scenario = Scenario(data, platform)
@@ -139,10 +140,12 @@ def main():
         wait(spawn_wait_time)
 
         print('Populating inventory file...')
-        inventory = create_inventory(node_list, management_nodes)
+        inventory, manager_public_ip = create_inventory(node_list, management_nodes)
+
         write_yaml(inventory) # Should create a unified write function at some point. 
+        file_transfer('output/', manager_public_ip)
+
 
 if __name__ == '__main__':
     main()
     sys.exit(0)
-    
