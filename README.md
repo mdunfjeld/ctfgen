@@ -1,4 +1,4 @@
-# CTF Scenario-DSL
+# CTFgen
 This app generates a CTF scenario based on the input specified declaratively using a domain specific language that is designed and created as part of a Master thesis at NTNU Gjøvik.
 
 ### Requirements
@@ -17,11 +17,13 @@ source py3-env/bin/activate
 pip3 install oyaml
 pip3 install python-heatclient
 pip3 install python-openstackclient
+pip3 install tqdm
 ```
 ### Usage
 ```
+# Define scenario. See examples
 # Remember to source OpenStack RC file first
-python3 main.py -f examples/example-attack-defense-minimal.yaml --debug --run
+python3 ctfgen.py -f examples/example-attack-defense-minimal.yaml --debug --run
 ```
 
 ### Notes
