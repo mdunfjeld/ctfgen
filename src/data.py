@@ -39,16 +39,25 @@ ansible_service_roles = {
 #}
 
 
+
+
 challenges = {
+
+   # 'id': {
+   #     'image': 'path/to/docker/registry:tag',
+   #     'name': 'name_of_image',
+   #     'port': 'port number that container exposes'
+   # }
+
     'shellshock': {
         'image': 'hmlio/vaas-cve-2014-6271:latest',
         'name': 'vaas-cve-2014-6271',
-        'port': "8080",
+        'port': "80",
     },
     'heartbleed': {
         'image': 'hmlio/vaas-cve-2014-0160',
         'name': 'vaas-cve-2014-0160',
-        'port': '1337'
+        'port': '443'
     }
 }
 
