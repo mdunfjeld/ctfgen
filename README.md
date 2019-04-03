@@ -23,11 +23,12 @@ pip3 install tqdm
 ```
 # Define scenario. See examples
 # Remember to source OpenStack RC file first
-python3 ctfgen.py -f examples/example-attack-defense-minimal.yaml --debug --run
+python3 ctfgen.py -f examples/example-jeopardy-verbose.yaml --debug --run
 ```
 
 ### Notes
-* Until deploy key creation can be implemented properly the program is dependent on ssh-keygen.
+* Deploy key creation and file transfer is done using `ssh-keygen` and `scp` which breaks cross platform compatibility. Consider implementing this functionality using a python library (e.g python-paramiko).
 * Openstack VM images must have cloud-init
 * Each node creates its own security group(s). In scenarios with many nodes we might exceed the quota limit for security groups.  
 * Ansible inventory is populated with IP addresses after the heat stack is created. Sufficient time must be allocated to ensure that all nodes have aquired an IP address before attempting to populate the inventory. Perhaps DNS can be used to circumvent this.
+* Management infrastructure is currently statically defined. Future work should include giving the instructor the option to choose which management nodes is needed depending on the scenario.
