@@ -7,6 +7,6 @@ parameters:
   
 resources:
   management:
-    type: ../lib/templates/management-redteam-vs-blueteam-template.yaml
+    type: ../lib/templates/management-redteam-blueteam-template.yaml
 
   

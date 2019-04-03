@@ -7,6 +7,8 @@ import argparse
 import configparser
 import subprocess
 import shutil
+import random
+import string
 from collections import OrderedDict
 from time import strftime, sleep
 
@@ -26,21 +28,21 @@ def load_config_file(filepath):
         sys.exit(1)
 
 
-def write_template_to_file(template, platform, debug=False):
-    timestamp = strftime("%Y_%m_%d-%H_%M")
-    if not os.path.exists('heat-output'):
-        os.mkdir('heat-output')
+def write_template_to_file(stack_id, template, platform, debug=False):
+    timestamp = strftime("%Y_%m_%d")
+    if not os.path.exists('history'):
+        os.mkdir('history')
     if debug is True:
-        filename = os.path.join('heat-output', 'debug.yaml')
+        filename = os.path.join('output', 'debug.yaml')
     else:
-        filename = os.path.join('heat-output', platform + '-stack-' + timestamp + '.yaml')
+        filename = os.path.join('output', 'heat_stack_' + timestamp + '_' + stack_id + '.yaml')
     with open(filename, 'w') as file:
         yaml_template = yaml.dump(template)
         file.write(str(yaml_template))
     return filename
 
-def write_yaml(data):
-    with open(os.path.join('output', 'hosts.yaml'), 'w') as file:
+def write_yaml(data, filename):
+    with open(os.path.join('output', filename), 'w') as file:
         yaml_template = yaml.dump(data)
         file.write(str(yaml_template))        
 
@@ -54,7 +56,8 @@ def create_deploy_key():
     subprocess.run('ssh-keygen -t ed25519 -f output/ansible_deploy_key -q -P ""', shell=True)
     hostname = os.uname()[1]
     username = os.environ['USER']
-    subprocess.run('sed -i "s/{}@{}/AnsibleDeployKey/g" output/ansible_deploy_key.pub'.format(username, hostname), shell=True)
+    subprocess.run('sed -i "s/{}@{}/AnsibleDeployKey/g" output/ansible_deploy_key.pub'.format(
+        username, hostname), shell=True)
 
 def get_config():
     config = configparser.ConfigParser()
@@ -76,75 +79,115 @@ def wait(seconds=90):
 def write(filepath, some_list):
     with open(filepath, 'w') as file:
         for line in some_list:
-            file.write(line + '\n')
+            file.write(str(line) + '\n')
 
 def file_transfer(dir, ip):
-    command = 'scp -r -i output/ansible_deploy_key {} ubuntu@{}:'.format(dir, ip)
+    command = 'scp -r -i output/ansible_deploy_key -o "UserKnownHostsFile=/dev/null" \
+        -o "StrictHostKeyChecking=no" {} ubuntu@{}:'.format(dir, ip)
     subprocess.run(command, shell=True)
 
-def main():
+def random_string(stringLength=6):
+    """Generate a random string of fixed length """
+    letters = string.ascii_uppercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
+
+def add_to_history(stackname, content_dir):
+    if not os.path.exists(os.path.join('history', stackname)):
+        newdir = os.path.join('history', stackname)
+    shutil.copytree(content_dir, newdir)
+
+def create_stack_id():
+    stack_id = random_string(6)
+    stack_name = 'heat_stack_' + str(stack_id)
+    return stack_name, stack_id
+
+def deploy_from_history(path):
+    if not os.path.exists(path):
+        print('Invalid path provided...')
+        sys.exit(1)
+    tmpdir = os.path.join(maindir, 'output')
+    if os.path.exists(tmpdir):
+        shutil.rmtree(tmpdir)
+    shutil.copytree(path, tmpdir)
+    files = os.listdir(tmpdir)
+    for file in files:
+        if str(file).startswith('heat_stack'):
+            heat_file = str(file)
+    
+    stack_id = str(heat_file).split('_')[::-1][0].split('.')[0]
+    stack_name = 'heat_stack_' + stack_id
+    data = load_config_file(os.path.join(tmpdir, 'metadata.yaml'))
+    deploy(os.path.join(tmpdir, heat_file), stack_name, data['nodes'], data['management_nodes'])
+
+def deploy(filename, stack_name, node_list, management_nodes=None):
+    command = 'openstack stack create -t {} --parameter key_name={} {}'.format(
+        filename, 
+        openstack_key, 
+        stack_name
+    )
+    subprocess.run(command, shell=True)
+    wait(spawn_wait_time)
+
+    print('Populating inventory file...')
+    inventory, manager_public_ip = create_inventory(node_list, management_nodes)
+    write_yaml(inventory, 'hosts.yaml') # Should create a unified write function at some point. 
+
+    print('Transferring files to manager...')
+    file_transfer('output/', manager_public_ip)
+
+def create_args():
     parser = argparse.ArgumentParser()
     group1 = parser.add_mutually_exclusive_group()
-    parser.add_argument('-f', '--file', nargs=1, help="Input yaml file")
+    group2 = parser.add_mutually_exclusive_group()
+
     parser.add_argument('--debug', action='store_true', help="Changes filename if set")
-    group1.add_argument('-r', '--run', action='store_true', help="Launch in openstack")
-    group1.add_argument('-i', '--inventory', action='store_true', help='Create inventory file')
-
-    parser.add_argument('-t', '--test', action='store_true')
-    
+    group1.add_argument('-f', '--file', nargs=1, help="Input yaml file")
+    parser.add_argument('-r', '--run', action='store_true', help="Launch in openstack")
+    group1.add_argument('-d', '--deploy-existing', nargs=1, 
+    help='Deploy stack from historic build. Provide path e.g history/heat_stack_XXXXXX')
     args = parser.parse_args()
+    return args
+
+def main():
+    args = create_args()
     config = get_config()
-
-
-    if not os.path.exists('output'):
-        os.mkdir('output')
-  #  else:
-  #      shutil.rmtree('output')
-  #      os.mkdir('output')
-
+    global management_nodes 
+    global spawn_wait_time
+    global openstack_key
+    global maindir
+    maindir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    if os.path.exists('output'):
+        shutil.rmtree('output')
+    os.mkdir('output')
+    
     data = OrderedDict()
-    create_deploy_key()
     if args.file:
         data = load_config_file(args.file[0])
-
-    platform = config.get('DEFAULT', 'platform')
-
-    global network_template
-    global management_nodes 
-    management_nodes = get_config_items(config, str(data['scenario']['type'].upper()), 'management_nodes')
-
-    if args.inventory:
-        path = os.path.join('output', 'node_list.txt')
-        with open(path, 'r') as file:
-            node_list = [node.strip() for node in file]
-            print('Populating inventory file...' )
-        inventory, manager_public_ip = create_inventory(node_list, management_nodes)
-        sys.exit(0)
-
-    scenario = Scenario(data, platform)
-    node_list = scenario.node_list   
-    write(os.path.join('output', 'node_list.txt'), node_list)
-
-    network_template = scenario.get_template()
+        create_deploy_key()
+        management_nodes = get_config_items(config, str(data['scenario']['type'].upper()), 'management_nodes')
+        stack_name, stack_id = create_stack_id()
+        stack_data = OrderedDict({
+            'stack_name': stack_name,
+            'type': str(data['scenario']['type']),
+            'management_nodes': management_nodes,
+            'nodes': [],
+        })    
     
-    filename = write_template_to_file(network_template, scenario.platform, debug=args.debug)
+    platform = config.get('DEFAULT', 'platform')
+    openstack_key = config.get('DEFAULT', 'openstack_key')
+    spawn_wait_time = int(config.get('DEFAULT', 'spawn_wait_time'))
 
-    if args.test:
+    if args.deploy_existing:
+        deploy_from_history(args.deploy_existing[0])
         sys.exit(0)
 
+    scenario = Scenario(data, platform, stack_data)   
+    network_template = scenario.get_template()
+    filename = write_template_to_file(stack_id, network_template, scenario.platform, debug=args.debug)
+    write_yaml(stack_data, 'metadata.yaml')
     if args.run:
-        stackname='test123'
-        command = 'openstack stack create -t {} --parameter key_name=testkey {}'.format(filename, stackname)
-        subprocess.run(command, shell=True)
-        spawn_wait_time = int(config.get('DEFAULT', 'spawn_wait_time'))
-        wait(spawn_wait_time)
-
-        print('Populating inventory file...')
-        inventory, manager_public_ip = create_inventory(node_list, management_nodes)
-
-        write_yaml(inventory) # Should create a unified write function at some point. 
-        file_transfer('output/', manager_public_ip)
-
+        add_to_history(stack_name, 'output/')
+        deploy(filename, stack_name, stack_data['nodes'])
 
 if __name__ == '__main__':
     main()

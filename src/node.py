@@ -9,20 +9,23 @@ from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
 
 class Node(object):
-    # Remember to test if port_list, net and subnet works properly. It is intended for scenarios where these are static (jeopardy, AD, Wargame)
-    def __init__(self, data, 
-                node_name, 
-                template, 
-                device, 
-                services_created, 
-                requirements, 
-                vulnerabilities_created=True,
-                port_list=None, 
-                net=None, 
-                subnet=None
-                ):
+    # Remember to test if port_list, net and subnet works properly. 
+    # It is intended for scenarios where these are static (jeopardy, AD, Wargame)
+    def __init__(self, 
+        data, 
+        team_name, 
+        template, 
+        device, 
+        services_created, 
+        requirements, 
+        vulnerabilities_created=True,
+        port_list=None, 
+        net=None, 
+        subnet=None
+        ):
         self.data = data
-        self.node_name = node_name
+        self.node_name = '{}_{}'.format(team_name, device)
+        self.team_name = team_name
         self.port_list = port_list
         self.node_data = data[device]
         self.net = net
@@ -36,31 +39,29 @@ class Node(object):
         self.services = []
         self.service_file = None
         self.vulnerabilities = []
-        self.initialize_node()
 
-    def initialize_node(self):
-        """Heat resources are initialized from this function"""
+
         self.add_node(self.port_list)
-
         if 'networks' in self.node_data['properties'].keys() and self.subnet_count is not 0:
             for idx in range(0, self.subnet_count):
                 router = self.node_data['properties']['networks'][idx]['router']
                 subnet = self.node_data['properties']['networks'][idx]['subnet']
-                self.add_node_ports(idx, router, subnet)
+                self.add_node_ports(idx, router, subnet, self.team_name)
         else:
-            self.add_node_ports('0', 'management', 'attack_defense_subnet') # TODO: fix other types as well
+            self.add_node_ports('0', 'management', 'attack_defense_subnet', self.team_name) 
+            # TODO: fix other types as well
 
         if 'public_ip' in self.node_data['properties'].keys() and self.node_data['properties']['public_ip'] is True:
             self.add_floating_ip()
 
         if self.node_has_services() and self.services_created is False:
             self.service_file = self.initialize_service_template(self.ansible_group)    
-            self.service_file, self.requirements = self.add_services(self.ansible_group, self.service_file, self.requirements)
+            self.service_file, self.requirements = self.add_services(
+                self.ansible_group, 
+                self.service_file, 
+                self.requirements)
             del self.service_file[0]['tasks'][0]
             self.write_ansible_file(self.service_file, self.ansible_group)
-           # print(self.node_name)
-           # debug_yaml(self.requirements)
-
 
     def get_requirements(self):
         return self.requirements
@@ -161,14 +162,14 @@ class Node(object):
                 return 'linux'
         return None
 
-    def add_node_ports(self, idx, router, subnet):
+    def add_node_ports(self, idx, router, subnet, team):
         """Create and add OS::Neutron::Port resource(s) to the heat template"""
         if router == 'management' and subnet == 'attack_defense_subnet':
             subnet_id  = { 'get_attr': ['management', subnet ]}
             network_id = { 'get_attr': ['management', 'attack_defense_net']} # Should change naming of predefined static network
         else:
-            subnet_id  = { 'get_resource': subnet }
-            network_id = { 'get_resource': str(router + 'net')}
+            subnet_id  = { 'get_resource': str(team + '_' + router + '_' + subnet) }
+            network_id = { 'get_resource': str(team + '_' + router + '-net')}
         port_name = str(self.node_name + '_port' + str(idx))
         port = OrderedDict({
         port_name: {
@@ -203,7 +204,7 @@ class Node(object):
                 'properties': {
                     'config_drive': 'true',
                     'personality': {
-                        'pubkey': { 'get_file': '../ansible_deploy_key.pub'},
+                        'pubkey': { 'get_file': '../output/ansible_deploy_key.pub'},
                     },
                     'metadata': { 'group': self.ansible_group },
                     'name': { 'get_param': self.node_name + '_server_name' },

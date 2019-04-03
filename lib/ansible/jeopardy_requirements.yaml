@@ -1,0 +1,4 @@
+- { src: geerlingguy.ntp, name: geerlingguy.ntp }
+- { src: geerlingguy.pip, name: geerlingguy.pip }
+- { src: geerlingguy.docker, name: geerlingguy.docker }
+- { src: "https://github.com/dunf/ansible-role-docker-container", name: docker-container }

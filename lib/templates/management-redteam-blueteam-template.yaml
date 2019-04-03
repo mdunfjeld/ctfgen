@@ -1,11 +1,12 @@
 heat_template_version: 2015-10-15
+
 description: Management template for attack-defense scenarios
 
 parameters:
   public_net: {type: string, default: ntnu-internal}
-  puppet-master_server_name: {type: string, default: puppet-master}
-  puppet-master_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
-  puppet-master_flavor: {type: string, default: m1.medium}
+  manager_server_name: {type: string, default: manager}
+  manager_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
+  manager_flavor: {type: string, default: m1.medium}
   key_name: {type: string, default: testkey }
 
   management-lan_net_cidr: {type: string, default: 10.10.0.0/24}
@@ -13,25 +14,24 @@ parameters:
   management-lan_net_pool_start: {type: string, default: 10.10.0.50}
   management-lan_net_pool_end: {type: string, default: 10.10.0.200}
 
-
-# NOT YET PORTED TO ANSIBLE
 resources:
   management-net:
     type: OS::Neutron::Net
     properties: {name: Management_Net }
 
-  puppet-master:
+  manager:
     type: OS::Nova::Server
     properties:
-      name: {get_param: puppet-master_server_name}
+      name: {get_param: manager_server_name}
       personality:
         privkey: { get_file: ../../output/ansible_deploy_key }
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
       metadata: { 'group': 'manager' }
-      image: {get_param: puppet-master_image}
-      flavor: {get_param: puppet-master_flavor}
+      image: {get_param: manager_image}
+      flavor: {get_param: manager_flavor}
       key_name: {get_param: key_name}
       networks:
-      - port: {get_resource: puppet-master_port0}
+      - port: {get_resource: manager_port0}
       user_data_format: RAW
       user_data:
         str_replace:
@@ -39,16 +39,16 @@ resources:
           params:
             __teststring__: "This script should eventually do something useful..."
 
-  puppet-master_port0:
+  manager_port0:
     type: OS::Neutron::Port
     properties:
       network: {get_resource: management-net}
       security_groups:
-      - {get_resource: puppet-master_security_group_management-lan}
+      - {get_resource: manager_security_group_management-lan}
       fixed_ips:
       - subnet_id: {get_resource: management-lan}
       
-  puppet-master_security_group_management-lan:
+  manager_security_group_management-lan:
     type: OS::Neutron::SecurityGroup
     properties:
       rules:
@@ -80,13 +80,13 @@ resources:
       - start: {get_param: management-lan_net_pool_start}
         end: {get_param: management-lan_net_pool_end}
 
-  puppet-master_floating_ip:
+  manager_floating_ip:
     type: OS::Neutron::FloatingIP
     properties:
       floating_network: { get_param: public_net }
-      port_id: { get_resource: puppet-master_port0 }
+      port_id: { get_resource: manager_port0 }
 
 outputs:
-  puppet_master_ip:
-    description: IP address of puppet master 
-    value: { get_attr: [ puppet-master, first_address ]}
+  manager_ip:
+    description: IP address of manager
+    value: { get_attr: [ manager, first_address ]}

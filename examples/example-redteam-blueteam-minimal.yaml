@@ -1,5 +1,7 @@
+
+
 scenario:                                  
-  type: redteam-vs-blueteam    
+  type: redteam-blueteam    
   properties:
     name: Fancy-name-of-CTF
     startDate: 01.01.1970
@@ -9,17 +11,45 @@ scenario:
     phases:
 
 resources:
-  node01:          
+  gameserver:          
     type: node                         
     properties:
       networks:      
-      - router: router01
+      - router: gateway
         subnet: ctf-lan
+      - router: gateway
+        subnet: ctf-dmz
 
-  router01:
+  node:
+    type: node
+    properties:
+      networks:
+        - router: gateway
+          subnet: ctf-lan
+
+  gateway:
     type: router                    
     properties:
       networks:
         ctf-lan:
           cidr: 192.168.40.0/24
           gatewayIP: 192.168.40.1
+        ctf-dmz:
+          cidr: 192.168.41.0/24
+          gatewayIP: 192.168.41.1
+
+  Blueteam:
+    type: team
+    properties:
+      members:
+      - blue_member1
+      - blue_member2
+      email: foo@bar.com
+      
+  Redteam:
+    type: team
+    properties:
+      members:
+      - red_member1
+      - red_member2
+      email: foo@bar.com

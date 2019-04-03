@@ -7,27 +7,28 @@ import ipaddress
 import sys
 
 class Router(object):
-    def __init__(self, data, router_name, template, subnet_list):
-        self.data = data
-        self.router_name = router_name
+    def __init__(self, data, template, team_name, device_name, subnet_list):
+        self.router_data = data
+        self.router_name = '{}_{}'.format(team_name, device_name)
+        self.team_name = team_name
+        self.device_name = device_name
+        self.router_data = data[self.device_name]
         self.template = template
         self.subnet_list = subnet_list
         self.subnet_count = self.count_subnets()
-        self.initialize_router()
 
-    def initialize_router(self):
-        netname = self.add_net()
+        self.netname = self.add_net()
         self.add_router()
         self.add_router_interfaces()
-        self.add_subnets(netname)
+        self.add_subnets(self.router_name, self.netname)
 
     def count_subnets(self): 
-        if not 'networks' in self.data['properties'].keys():
+        if not 'networks' in self.router_data['properties'].keys():
             return 0
-        elif self.data['properties']['networks'] == None:
+        elif self.router_data['properties']['networks'] == None:
             return 0
         else:
-            return len(self.data['properties']['networks'])
+            return len(self.router_data['properties']['networks'])
 
     def add_net(self):
         netname = str(self.router_name + '-net')
@@ -57,26 +58,28 @@ class Router(object):
             return '{}{}'.format(s, '/24')
 
     def set_cidr(self, subnet):
-        if self.data['properties']['networks'][subnet] is not None and 'cidr' in self.data['properties']['networks'][subnet].keys():
+        if self.router_data['properties']['networks'][subnet] is not None and \
+            'cidr' in self.router_data['properties']['networks'][subnet].keys():
             try:
-                cidr = str(self.data['properties']['networks'][subnet]['cidr'])
+                cidr = str(self.router_data['properties']['networks'][subnet]['cidr'])
                 cidr = ipaddress.IPv4Network(cidr)
                 return str(cidr)
             except ValueError:
                 print('Invalid CIDR range selected for subnet: ' + subnet)
                 sys.exit(1)
-        elif self.data['properties']['networks'][subnet] is None:
+        elif self.router_data['properties']['networks'][subnet] is None:
             return str(self.allocate_subnet())
     
     def set_gatewayIP(self, subnet, cidr):
-        if self.data['properties']['networks'][subnet] is not None and 'gatewayIP' in self.data['properties']['networks'][subnet].keys():
-            ip = str(self.data['properties']['networks'][subnet]['gatewayIP'])
+        if self.router_data['properties']['networks'][subnet] is not None and \
+        'gatewayIP' in self.router_data['properties']['networks'][subnet].keys():
+            ip = str(self.router_data['properties']['networks'][subnet]['gatewayIP'])
             if ipaddress.IPv4Address(ip) in ipaddress.IPv4Network(cidr):
                 return ip
             else:
                 print('The selected GatewayIP is not invalid')
                 sys.exit(1)
-        elif self.data['properties']['networks'][subnet] is None:
+        elif self.router_data['properties']['networks'][subnet] is None:
             ip = ipaddress.IPv4Network(cidr)[1]
             return str(ip)
 
@@ -86,28 +89,27 @@ class Router(object):
         end   = str(ipaddress.IPv4Network(cidr)[200])
         return start, end
 
-
-
-    def add_subnets(self, netname):
+    def add_subnets(self, router_name, netname):
         """Add subnet heat resources and parameters to the template"""
-        for subnet in self.data['properties']['networks'].keys():
-            subnet_resource = OrderedDict({
-                subnet: {
+        for subnet in self.router_data['properties']['networks'].keys():
+            resource = str(router_name + '_' + subnet)
+            subnet_resource = OrderedDict({   
+                resource: {
                     'type': 'OS::Neutron::Subnet',
                     'properties': {
-                        'name': subnet,
+                        'name': resource,
                         'network_id': { 
                             'get_resource': netname, 
                         },
                         'cidr': { 
-                            'get_param': subnet + '_net_cidr'
+                            'get_param': resource + '_net_cidr'
                         },
                         'gateway_ip': { 
-                            'get_param': subnet + '_net_gateway'
+                            'get_param': resource + '_net_gateway'
                         },
                         'allocation_pools': [{
-                            'start': { 'get_param': subnet + '_net_pool_start' },
-                            'end': { 'get_param': subnet + '_net_pool_end' }
+                            'start': { 'get_param': resource + '_net_pool_start' },
+                            'end': { 'get_param': resource + '_net_pool_end' }
                         }],
                     }
                 }
@@ -116,22 +118,22 @@ class Router(object):
             cidr = self.set_cidr(subnet)
             gw = self.set_gatewayIP(subnet, cidr)
             self.template['parameters'].update(OrderedDict({
-                subnet + '_net_cidr': {
+                resource + '_net_cidr': {
                     'type': 'string',
                     'default': cidr
                 }}))
             self.template['parameters'].update(OrderedDict({
-                subnet + '_net_gateway': {
+                resource + '_net_gateway': {
                     'type': 'string',
                     'default': gw
                 }}))
             self.template['parameters'].update(OrderedDict({
-                subnet + '_net_pool_start': {
+                resource + '_net_pool_start': {
                     'type': 'string',
                     'default': self.set_dhcp_pools(cidr)[0]
                 }}))
             self.template['parameters'].update(OrderedDict({
-                subnet + '_net_pool_end': {
+                resource + '_net_pool_end': {
                     'type': 'string',
                     'default': self.set_dhcp_pools(cidr)[1]
                 }}))
@@ -151,14 +153,14 @@ class Router(object):
 
     def add_router_interfaces(self):
         """Adds the router's interfaces to the heat template"""
-        for subnet_name in self.data['properties']['networks'].keys():
+        for subnet_name in self.router_data['properties']['networks'].keys():
             #print(subnet_name)
             interface = OrderedDict({
                 str(self.router_name + '_interface_' + subnet_name): {
                     'type': 'OS::Neutron::RouterInterface',
                     'properties': {
                         'router_id': { 'get_resource': self.router_name },
-                        'subnet_id': { 'get_resource': subnet_name  }
+                        'subnet_id': { 'get_resource': str(self.router_name + '_' + subnet_name)  }
                     }   
                 }
             })

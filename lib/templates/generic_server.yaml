@@ -1,6 +1,6 @@
 heat_template_version: 2016-10-14
 
-description: Generic server without a floating IP
+description: Generic server with a floating IP
 
 
 parameters:
@@ -9,12 +9,10 @@ parameters:
     description: Name of the server
   srv_flavor:
     type: string
-    description: Flavor of the server
     default: m1.medium 
   srv_image:
     type: string
-    description: Which image the server should use
-    default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 #CentOS 7.5 x86_64
+    default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64
   srv_key_name:
     type: string
     description: Keypair which is pushed into the server
@@ -27,16 +25,12 @@ parameters:
   puppetmaster_ip:
     type: string
     description: Ip address of puppetmaster machine
-#  puppetmaster_name:
-#    type: string
-#    description: Name of the puppetmaster
   security_groups:
       type:  comma_delimited_list
       description: Array of security groups
-#  puppet_environment:
-#     type: string
-#     description: Puppet environment
-#     default: testing # TODO: Change or add to higher hier
+  metadata_group:
+    type: string
+    description: Ansible group
 
 
 resources:
@@ -51,6 +45,10 @@ resources:
   generic_server:
     type: OS::Nova::Server
     properties:
+      config_drive: true
+      personality: 
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
+      metadata: { 'group': { get_param: metadata_group } }
       name: { get_param: srv_name }
       flavor: { get_param: srv_flavor }
       image: { get_param: srv_image }

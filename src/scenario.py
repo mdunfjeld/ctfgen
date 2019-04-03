@@ -10,28 +10,25 @@ from src.helpers import prettyprint # For debugging only
 
 
 class Scenario(object):
-
-    def __init__(self, data, platform, config=None):
+    def __init__(self, data, platform, stack_data, config=None):
         self.data = data
         self.template = self.get_scenario_template()
         self.type = self.data['scenario']['type']
+        self.stack_data = stack_data
         self.config = config 
         self.platform = platform
-        self.docker_hosts = self.get_docker_hosts()
         self.ansible_requirements = self.get_requirements_template()
         self.allocated_subnets = []
         self.node_list = []
         self.router_list = []
-        self.initialize_scenario(self.type, self.data)
 
-
-    def initialize_scenario(self, stype, data):
         if self.scenario_resources_are_valid(data) is False:
-            print('Invalid resource(s) specified for scenario type', stype)
-            print('Valid resource(s) for', stype, 'are', self.get_valid_types(stype))
+            print('Invalid resource(s) specified for scenario type', self.type)
+            print('Valid resource(s) for', self.type, 'are', self.get_valid_types(self.type))
             sys.exit(1)
 
         if self.type == 'jeopardy':
+            self.docker_hosts = self.get_docker_hosts()
             challenge_file = self.initialize_software_template('docker', self.type)
             self.jeopardy_create(data, self.ansible_requirements, challenge_file)
         elif self.type == 'wargame':
@@ -39,7 +36,7 @@ class Scenario(object):
         elif self.type == 'attack-defense':
             self.attack_defense_create(data, self.ansible_requirements)
         else:
-            self.redteam_blueteam_create(data)
+            self.redteam_blueteam_create(data, self.ansible_requirements)
 
     def get_requirements_template(self):
         filename = str(self.type + '_requirements.yaml')
@@ -52,6 +49,9 @@ class Scenario(object):
         else:
             return 2    # Default number of docker hosts
             
+    def get_stack_data(self):
+        return self.stack_data
+    
     def get_template(self):
         return self.template
 
@@ -60,7 +60,8 @@ class Scenario(object):
         foo = {
             'jeopardy': ['challenge'],
             'attack-defense': ['node', 'vulnerability', 'team', 'agent', 'objective', 'service'],
-            'redteam-vs-blueteam': ['node', 'router', 'service', 'team', 'agent', 'vulnerability', 'user', 'objective', 'rules'],
+            'redteam-blueteam': 
+            ['node', 'router', 'service', 'team', 'agent', 'vulnerability', 'user', 'objective', 'rules'],
             'wargame': ['service', 'vulnerability', 'node']
         }
         return foo[stype]
@@ -87,7 +88,7 @@ class Scenario(object):
     def scenario_type_is_valid(self):
         """ Verify correct scenario type"""
         return True if self.data['scenario']['type'].lower() in \
-        ['attack-defense', 'generic', 'redteam-vs-blueteam', 'jeopardy', 'wargame'] \
+        ['attack-defense', 'generic', 'redteam-blueteam', 'jeopardy', 'wargame'] \
         else False
 
     def get_scenario_template(self):
@@ -129,6 +130,7 @@ class Scenario(object):
 
 
     def wargame_create(self, data):
+        # Intention is to use docker container as is done with jeopardy. This might not be needed
         pass
     
     def get_teams(self, data):
@@ -146,42 +148,44 @@ class Scenario(object):
         for device_name in data['resources']:
             if data['resources'][device_name]['type'] == 'node':
                 service_file_created = False
-                for team_name, team_data in self.get_teams(data): # Is team_data needed?                
-                    full_node_name = '{}_{}'.format(team_name, device_name)
+                for team_name, team_data in self.get_teams(data): # Is team_data needed?  Maybe remove? dont need it              
                     node = Node(
                         data['resources'], 
-                        full_node_name, 
+                        team_name, 
                         self.template,
                         device_name,
                         service_file_created,
                         requirements
                     )
-        
-                    self.node_list.append(full_node_name)
+                    self.stack_data['nodes'].append(str(team_name + '_' + device_name))
                     service_file_created = True
                     requirements = node.get_requirements()
                     self.write_output(requirements, 'requirements.yaml')
 
-    def redteam_blueteam_create(self, data):
+    def redteam_blueteam_create(self, data, requirements):
         """Create the heat infrastructure"""
         for device_name in data['resources']:
             if data['resources'][device_name]['type'] == 'router':
-                router = Router(
-                    data['resources'][device_name],
-                    device_name,
-                    self.template,
-                    self.allocated_subnets
-                )
-                self.router_list.append(router)
-                self.allocated_subnets = router.get_allocated_subnets()
+                for team_name, team_data in self.get_teams(data):
+                    router = Router(
+                        data['resources'],
+                        self.template,
+                        team_name,
+                        device_name,
+                        self.allocated_subnets
+                    )
+                    self.router_list.append(router)
+                    self.allocated_subnets = router.get_allocated_subnets()
         for device_name in data['resources']:
             if data['resources'][device_name]['type'] == 'node':
-                node = Node(
-                    data['resources'][device_name], 
-                    # 
-                    device_name, 
-                    self.template
-                )
-                self.node_list.append(node)
-            #elif data['resources'][device_name]['type'] == 'vulnerability':
-            #    v = Vulnerability()
+                service_file_created = False
+                for team_name, team_data in self.get_teams(data):
+                    node = Node(
+                        data['resources'], 
+                        team_name,
+                        self.template,
+                        device_name, 
+                        service_file_created,
+                        requirements
+                    )
+                    self.stack_data['nodes'].append(str(team_name + '_' + device_name))
