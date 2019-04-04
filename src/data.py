@@ -9,7 +9,7 @@
 'id': {
     'src': '',
     'name': 'role-name'
-
+}
 ***************************************************************************
 id: Used from the DSL to designate which software is to be installed. 
     Id must be unique
@@ -20,8 +20,8 @@ name: The name the role will be installed as. Needed because the role will
 """
 ansible_service_roles = {
     'apache2': {
-        'src': 'https://github.com/dunf/ansible-role-apache',
-        'name': 'apache2-role'
+        'src': 'geerlingguy.apache',
+        'name': 'geerlingguy.apache'
     },
     'docker': {
         'src': 'geerlingguy.docker',
@@ -34,9 +34,9 @@ ansible_service_roles = {
 
 }
 
-#ansible_vulnerability_roles = {
+ansible_vulnerability_roles = {
     
-#}
+}
 
 
 
