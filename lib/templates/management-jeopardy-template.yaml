@@ -4,7 +4,7 @@ description: management template for attack-defense scenarios
 parameters:
   public_net: {type: string, default: ntnu-internal}
   manager_server_name: {type: string, default: manager}
-  manager_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 } #CentOS 7.5 x86_64 }
+  manager_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
   manager_flavor: {type: string, default: m1.medium}
   key_name: {type: string, default: testkey }
 
@@ -42,7 +42,7 @@ resources:
         str_replace:
           template: { get_file: ../scripts/manager.sh }
           params:
-            __teststring__: "This script should eventually do something useful..."
+            __teststring__: "Data could potentially be transferred here!"
             
   manager_port0:
     type: OS::Neutron::Port
@@ -59,8 +59,6 @@ resources:
       rules:
       - {remote_ip_prefix: 0.0.0.0/0, protocol: icmp}
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
-      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8140, port_range_max: 8140}
-      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8010}
 
   management:
     type: OS::Neutron::Router

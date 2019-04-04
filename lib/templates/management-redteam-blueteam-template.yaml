@@ -23,6 +23,7 @@ resources:
     type: OS::Nova::Server
     properties:
       name: {get_param: manager_server_name}
+      config_drive: true
       personality:
         privkey: { get_file: ../../output/ansible_deploy_key }
         pubkey: { get_file: ../../output/ansible_deploy_key.pub }
@@ -37,8 +38,8 @@ resources:
         str_replace:
           template: { get_file: ../scripts/manager.sh }
           params:
-            __teststring__: "This script should eventually do something useful..."
-
+            __teststring__: "Data could potentially be transferred here!"
+            
   manager_port0:
     type: OS::Neutron::Port
     properties:
@@ -54,7 +55,6 @@ resources:
       rules:
       - {remote_ip_prefix: 0.0.0.0/0, protocol: icmp}
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
-      - {remote_ip_prefix: 0.0.0.0/0, protocol: udp, port_range_min: 8140, port_range_max: 8140}
 
   Management-router:
     type: OS::Neutron::Router

@@ -58,7 +58,7 @@ resources:
       user_data_format: RAW
       user_data:
         str_replace:
-          template: { get_file: ../scripts/testing.sh }
+          template: { get_file: ../scripts/generic_node.sh }
           params:
             puppetmaster_ip_address: { get_param: puppetmaster_ip }
             __name__: { get_param: srv_name }
