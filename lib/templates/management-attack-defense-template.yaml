@@ -31,6 +31,7 @@ resources:
       config_drive: true
       personality:
         privkey: { get_file: ../../output/ansible_deploy_key }
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
       metadata: { 'group': 'manager' }
       flavor: {get_param: manager_flavor}
       key_name: {get_param: key_name}
