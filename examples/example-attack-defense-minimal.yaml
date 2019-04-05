@@ -1,3 +1,5 @@
+
+
 scenario:                                  
   type: attack-defense    
   properties:
@@ -33,7 +35,7 @@ resources:
         subnet: attack_defense_subnet
       public_ip: true
 
-  SomeTeamName:
+  Team1:
     type: team
     properties:
       members:
@@ -41,7 +43,7 @@ resources:
       - team1_member2
       email: foo@bar.com
 
-  AnotherTeam:
+  Team2:
     type: team
     properties:
       members:

@@ -119,7 +119,7 @@ def deploy_from_history(path):
     data = load_config_file(os.path.join(tmpdir, 'metadata.yaml'))
     deploy(os.path.join(tmpdir, heat_file), stack_name, data['nodes'], data['management_nodes'])
 
-def deploy(filename, stack_name, node_list, management_nodes=None):
+def deploy(filename, stack_name, node_list, management_nodes):
     command = 'openstack stack create -t {} --parameter key_name={} {}'.format(
         filename, 
         openstack_key, 
@@ -187,7 +187,7 @@ def main():
     write_yaml(stack_data, 'metadata.yaml')
     if args.run:
         add_to_history(stack_name, 'output/')
-        deploy(filename, stack_name, stack_data['nodes'])
+        deploy(filename, stack_name, stack_data['nodes'], management_nodes)
 
 if __name__ == '__main__':
     main()

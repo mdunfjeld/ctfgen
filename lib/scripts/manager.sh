@@ -24,7 +24,7 @@ if [[ -d "/home/ubuntu/output" ]]; then
     cd /etc/ansible/
     ansible-galaxy install -r /etc/ansible/requirements.yaml
     
-    for playbook in $(ls /home/ubuntu/output/*.yaml | grep -v requirements.yaml | grep -v hosts.yaml); do
+    for playbook in $(ls /home/ubuntu/output/*.yaml | grep -v requirements.yaml | grep -v hosts.yaml | grep -v heat_stack*); do
         ansible-playbook -i /etc/ansible/hosts.yaml $playbook
     done
 fi

@@ -1,6 +1,0 @@
----
-- hosts: <group>
-  become: true
-  roles:
-    - role: geerlingguy.ntp
-  tasks: [] 

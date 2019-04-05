@@ -38,7 +38,6 @@ class Node(object):
         self.subnet_count = self.count_subnets()
         self.services = []
         self.service_file = None
-        self.vulnerabilities = []
 
 
         self.add_node(self.port_list)
@@ -49,18 +48,26 @@ class Node(object):
                 self.add_node_ports(idx, router, subnet, self.team_name)
         else:
             self.add_node_ports('0', 'management', 'attack_defense_subnet', self.team_name) 
-            # TODO: fix other types as well
 
         if 'public_ip' in self.node_data['properties'].keys() and self.node_data['properties']['public_ip'] is True:
             self.add_floating_ip()
 
-        if self.node_has_services() and self.services_created is False:
-            self.service_file = self.initialize_service_template(self.ansible_group)    
-            self.service_file, self.requirements = self.add_services(
-                self.ansible_group, 
-                self.service_file, 
-                self.requirements)
-            del self.service_file[0]['tasks'][0]
+        if self.services_created is False:
+            if self.node_has_property('services') or self.node_has_property('vulnerabilities'):
+                self.service_file = self.initialize_service_template(self.ansible_group)    
+            
+            if self.node_has_property('services'):
+                self.service_file, self.requirements = self.build_ansible_config(
+                    'services',
+                    self.ansible_group, 
+                    self.service_file, 
+                    self.requirements)
+            if self.node_has_property('vulnerabilities'):
+                self.service_file, self.requirements = self.build_ansible_config(
+                    'vulnerabilities',
+                    self.ansible_group, 
+                    self.service_file, 
+                    self.requirements)
             self.write_ansible_file(self.service_file, self.ansible_group)
 
     def get_requirements(self):
@@ -73,13 +80,15 @@ class Node(object):
             file.write(f)
 
     def initialize_service_template(self, ansible_group):
+        """Load ansible template for node"""
         with open(os.path.join('lib', 'templates', 'node_software_template.yaml'), 'r') as file:
             data = yaml.load(file)
             data[0]['hosts'] = ansible_group
             return data
 
-    def node_has_services(self):
-        if 'services' in self.node_data['properties'].keys() and self.node_data['properties']['services'] is not None:
+    def node_has_property(self, attr):
+        """Checks if a property is defined in a node"""
+        if attr in self.node_data['properties'].keys() and self.node_data['properties'][attr] is not None:
             return True
         else:
             return False
@@ -92,25 +101,17 @@ class Node(object):
         else:
             return True # Service uses default settings
 
-    def add_services(self, ansible_group, service_file, requirements):
+    def build_ansible_config(self, attr, ansible_group, service_file, requirements):
         """Create Ansible software configuration for the node"""
-        for service in self.node_data['properties']['services']:
-            if self.service_is_default(service):
-                s = Service(service, ansible_group, service_file, requirements)
+        for name in self.node_data['properties'][attr]:
+            if self.service_is_default(name):
+                s = Service(name, ansible_group, service_file, requirements, attr)
             else:
-                s = Service(service, ansible_group, service_file, requirements, self.data[service])
+                s = Service(name, ansible_group, service_file, requirements, attr, self.data[name])
             service_file = s.get_file()
             requirements = s.get_requirements()
             self.services.append(s)
         return service_file, requirements
-
-    def add_outputs(self):
-        """Not finished... Eventually each node should output its IP"""
-        self.template['outputs'].update(OrderedDict({
-            str(self.node_name + '_ip'): {
-                'value': ""
-            }
-        }))
 
     def count_subnets(self): 
         """Get the number of subnets the node is connected to"""
@@ -210,7 +211,7 @@ class Node(object):
                     'name': { 'get_param': self.node_name + '_server_name' },
                     'image': { 'get_param': self.node_name + '_image' },
                     'flavor': { 'get_param': self.node_name + '_flavor' },
-                    'key_name': { 'get_param': 'key_name' },                # This should be made dynamic at some point
+                    'key_name': { 'get_param': 'key_name' },             
                     'networks': port_list,
                     'user_data_format': 'RAW',
                     'user_data': 
@@ -309,10 +310,10 @@ class Node(object):
         return resource_name
 
     def add_software_config(self): # It should be possible to select which files are used. Need to fix this.
-        """This one probably needs more work"""
+        """"""
         config = OrderedDict({
                 'str_replace': {
-                    'template': { 'get_file': '../lib/scripts/testing.sh' },
+                    'template': { 'get_file': '../lib/scripts/generic_node.sh' },
                     'params': {
                         '__manager_ip__': { 'get_attr': ['management', 'manager_ip']}
                     }

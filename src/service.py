@@ -8,36 +8,47 @@ class Service(object):
     See: https://galaxy.ansible.com/docs/using/installing.html
     """
 
-    def __init__(self, name, ansible_group, service_template, requirements, service_resource=None):
+    def __init__(self, name, ansible_group, service_template, requirements, attr, service_resource=None):
         self.name = name
         self.ansible_group = ansible_group
         self.requirements = requirements
         self.service_template = service_template
+        self.service_type = attr
         self.service_resource = service_resource
        
+        if self.service_type == 'vulnerabilities':
+            db = ansible_vulnerability_roles
+        elif self.service_type == 'services':
+            db = ansible_service_roles
+        tmp = 'vulnerability' if db == ansible_vulnerability_roles else 'service'
 
-        if name in ansible_service_roles.keys():
-            service_data  = ansible_service_roles.get(name)
+        if name in db.keys():
+            service_data  = db.get(name)
             service_name_dsl = service_data['name']
 
             if not self.is_already_added(name, self.requirements):
                 self.requirements.insert(len(self.requirements), service_data)
 
             role = OrderedDict({
-                    'name': 'Installing service {}'.format(service_name_dsl), 
-                    'include_role': {
-                        'name': str(service_name_dsl)
-                    }})
+                'name': 'Installing {} {}'.format(tmp, service_name_dsl), 
+                'include_role': {
+                    'name': str(service_name_dsl)
+                }
+            })
+
             if self.service_resource is not None:
-                #role.update('vars': {
-                # TODO! Implement variable overriding here
-                #})  
-                pass
+                rolevars = OrderedDict({'vars': {}})
+                for key, value in zip(
+                    self.service_resource['properties'].keys(), self.service_resource['properties'].values()):
+                    rolevars['vars'].update({
+                        key: value
+                    })
+                role.update(rolevars)
             n = len(self.service_template[0]['tasks'])
             self.service_template[0]['tasks'].insert(n, role)
            
         else:
-            print('Error! Service {} is unsupported...'.format(name))
+            print('Error! {} {} is unsupported...'.format(self.service_type, name))
             sys.exit(1) 
     
     def is_already_added(self, service, req):
@@ -45,7 +56,6 @@ class Service(object):
             if service in s['name']:
                 return True
         return False        
-    
 
     def get_file(self):
         return self.service_template

@@ -11,7 +11,6 @@ scenario:
       - AnotherTeam
 
 resources:
-  
   gameserver:                                        
     type: node                                  
     properties:
@@ -27,18 +26,17 @@ resources:
           - 80
           - 8080
           udp:
-          - 53
-      role:
-        name: web     
+          - 53   
       services:
-        - apache2                          
-      userAccount:
+        - apache2       
+        - docker                   
+      user_account:
         type: employee                           
         name: John Doe
         groups:
           - www-data
           - employees
-      vulnerability:
+      vulnerabilities:
         - shellshock
         - heartbleed
       
@@ -60,7 +58,7 @@ resources:
     properties:
       port: 8000
 
-  SomeTeamName:
+  team1:
     type: team
     properties:
       members:
@@ -68,7 +66,7 @@ resources:
       - team1_member2
       email: foo@bar.com
 
-  AnotherTeam:
+  team2:
     type: team
     properties:
       members:
