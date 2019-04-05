@@ -10,4 +10,4 @@ apt update
 mkdir -p /mnt/config
 mount /dev/disk/by-label/config-2 /mnt/config
 
-cat /mnt/config/openstack/content/0000 >> /home/ubuntu/.ssh/authorized_keys
+cat /mnt/config/openstack/content/0000 > /root/.ssh/authorized_keys

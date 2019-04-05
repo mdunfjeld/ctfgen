@@ -16,7 +16,7 @@ resources:
         flag: flag{This is the flag}
         prerequisites: 
         points: 10
-        port: 8010
+        port: 1338
 
   heartbleed:                               
     type: challenge                   
@@ -26,3 +26,4 @@ resources:
       prerequisites: 
         - shellshock
       points: 10
+      port: 1337

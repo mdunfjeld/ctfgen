@@ -4,14 +4,13 @@ import oyaml as yaml
 import sys
 import os
 import argparse
-import configparser
 import subprocess
 import shutil
 import random
 import string
 from collections import OrderedDict
 from time import strftime, sleep
-
+from src.config import get_config, get_config_items
 from src.scenario import Scenario
 from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
@@ -58,15 +57,6 @@ def create_deploy_key():
     username = os.environ['USER']
     subprocess.run('sed -i "s/{}@{}/AnsibleDeployKey/g" output/ansible_deploy_key.pub'.format(
         username, hostname), shell=True)
-
-def get_config():
-    config = configparser.ConfigParser()
-    config.read('ctfgen.conf')
-    return config
-
-def get_config_items(config, section, item):
-    item = str(config.get(section, item)).rsplit(' ')
-    return [str(x).strip(',') for x in item ]
 
 def wait(seconds=90):
     wait_time = int(seconds * 10)
@@ -119,6 +109,12 @@ def deploy_from_history(path):
     data = load_config_file(os.path.join(tmpdir, 'metadata.yaml'))
     deploy(os.path.join(tmpdir, heat_file), stack_name, data['nodes'], data['management_nodes'])
 
+def inventory(node_list, management_nodes):
+    print('Populating inventory file...')
+    inventory, manager_public_ip = create_inventory(node_list, management_nodes)
+    write_yaml(inventory, 'hosts.yaml')
+    return manager_public_ip
+
 def deploy(filename, stack_name, node_list, management_nodes):
     command = 'openstack stack create -t {} --parameter key_name={} {}'.format(
         filename, 
@@ -128,18 +124,16 @@ def deploy(filename, stack_name, node_list, management_nodes):
     subprocess.run(command, shell=True)
     wait(spawn_wait_time)
 
-    print('Populating inventory file...')
-    inventory, manager_public_ip = create_inventory(node_list, management_nodes)
-    write_yaml(inventory, 'hosts.yaml') # Should create a unified write function at some point. 
+    manager_ip = inventory(node_list, management_nodes)
 
     print('Transferring files to manager...')
-    file_transfer('output/', manager_public_ip)
+    file_transfer('output/', manager_ip)
 
 def create_args():
     parser = argparse.ArgumentParser()
     group1 = parser.add_mutually_exclusive_group()
     group2 = parser.add_mutually_exclusive_group()
-
+    group1.add_argument('-i', '--inventory', action='store_true', help='Invoke inventory plugin')
     parser.add_argument('--debug', action='store_true', help="Changes filename if set")
     group1.add_argument('-f', '--file', nargs=1, help="Input yaml file")
     parser.add_argument('-r', '--run', action='store_true', help="Launch in openstack")
@@ -156,17 +150,25 @@ def main():
     global openstack_key
     global maindir
     maindir = os.path.abspath(os.path.dirname(sys.argv[0]))
-    if os.path.exists('output'):
-        shutil.rmtree('output')
-    os.mkdir('output')
-    
+
+    if args.inventory:
+        c = load_config_file('output/metadata.yaml')
+        management_nodes = c['management_nodes']
+        node_list = c['nodes']
+        ip = inventory(node_list, management_nodes)
+        file_transfer('output/', ip)
+        sys.exit(0)
+ 
     data = OrderedDict()
     if args.file:
+        if os.path.exists('output'):
+            shutil.rmtree('output')
+        os.mkdir('output')
         data = load_config_file(args.file[0])
         create_deploy_key()
         management_nodes = get_config_items(config, str(data['scenario']['type'].upper()), 'management_nodes')
         stack_name, stack_id = create_stack_id()
-        stack_data = OrderedDict({
+        metadata = OrderedDict({
             'stack_name': stack_name,
             'type': str(data['scenario']['type']),
             'management_nodes': management_nodes,
@@ -181,13 +183,13 @@ def main():
         deploy_from_history(args.deploy_existing[0])
         sys.exit(0)
 
-    scenario = Scenario(data, platform, stack_data)   
+    scenario = Scenario(data, platform, metadata)   
     network_template = scenario.get_template()
     filename = write_template_to_file(stack_id, network_template, scenario.platform, debug=args.debug)
-    write_yaml(stack_data, 'metadata.yaml')
+    write_yaml(metadata, 'metadata.yaml')
     if args.run:
         add_to_history(stack_name, 'output/')
-        deploy(filename, stack_name, stack_data['nodes'], management_nodes)
+        deploy(filename, stack_name, metadata['nodes'], management_nodes)
 
 if __name__ == '__main__':
     main()

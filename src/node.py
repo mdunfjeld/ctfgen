@@ -4,7 +4,7 @@ from src.data import *
 import sys
 import os
 
-from src.service import Service
+from src.component import Component
 from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
 
@@ -37,7 +37,7 @@ class Node(object):
         self.vulnerabilities_created = vulnerabilities_created
         self.subnet_count = self.count_subnets()
         self.services = []
-        self.service_file = None
+        self.ansible_file = None
 
 
         self.add_node(self.port_list)
@@ -53,22 +53,30 @@ class Node(object):
             self.add_floating_ip()
 
         if self.services_created is False:
-            if self.node_has_property('services') or self.node_has_property('vulnerabilities'):
-                self.service_file = self.initialize_service_template(self.ansible_group)    
+            self.ansible_file = self.initialize_service_template(self.ansible_group)                   
             
             if self.node_has_property('services'):
-                self.service_file, self.requirements = self.build_ansible_config(
+                self.ansible_file, self.requirements = self.build_ansible_config(
                     'services',
                     self.ansible_group, 
-                    self.service_file, 
-                    self.requirements)
+                    self.ansible_file, 
+                    self.requirements
+                )
             if self.node_has_property('vulnerabilities'):
-                self.service_file, self.requirements = self.build_ansible_config(
+                self.ansible_file, self.requirements = self.build_ansible_config(
                     'vulnerabilities',
                     self.ansible_group, 
-                    self.service_file, 
-                    self.requirements)
-            self.write_ansible_file(self.service_file, self.ansible_group)
+                    self.ansible_file, 
+                    self.requirements
+                )
+            if self.node_has_property('user_accounts'):
+                self.ansible_file, self.requirements = self.build_ansible_config(
+                    'user_accounts',
+                    self.ansible_group,
+                    self.ansible_file,
+                    self.requirements
+                )
+            self.write_ansible_file(self.ansible_file, self.ansible_group)
 
     def get_requirements(self):
         return self.requirements
@@ -93,25 +101,29 @@ class Node(object):
         else:
             return False
 
-    def service_is_default(self, service):
+    def component_is_default(self, component):
         """Check whether service uses default settings or not"""
         # A resource with name 'service' exists and it is of type 'service'
-        if service in self.data.keys() and self.data[service]['type'] == 'service':
+        if component in self.data.keys() and self.data[component]['type'] == 'service':
             return False
         else:
             return True # Service uses default settings
 
-    def build_ansible_config(self, attr, ansible_group, service_file, requirements):
+    def build_ansible_config(self, attr, ansible_group, ansible_file, requirements):
         """Create Ansible software configuration for the node"""
-        for name in self.node_data['properties'][attr]:
-            if self.service_is_default(name):
-                s = Service(name, ansible_group, service_file, requirements, attr)
-            else:
-                s = Service(name, ansible_group, service_file, requirements, attr, self.data[name])
-            service_file = s.get_file()
-            requirements = s.get_requirements()
-            self.services.append(s)
-        return service_file, requirements
+        if attr == 'user_accounts':
+            for user_account in self.node_data['properties']['user_accounts']:
+                s = Component(user_account, ansible_group, ansible_file, requirements, attr)
+        else:
+            for name in self.node_data['properties'][attr]:
+                if self.component_is_default(name):
+                    s = Component(name, ansible_group, ansible_file, requirements, attr)
+                else:
+                    s = Component(name, ansible_group, ansible_file, requirements, attr, self.data[name])
+                ansible_file = s.get_file()
+                requirements = s.get_requirements()
+                self.services.append(s)
+        return ansible_file, requirements
 
     def count_subnets(self): 
         """Get the number of subnets the node is connected to"""

@@ -10,11 +10,11 @@ from src.helpers import prettyprint # For debugging only
 
 
 class Scenario(object):
-    def __init__(self, data, platform, stack_data, config=None):
+    def __init__(self, data, platform, metadata, config=None):
         self.data = data
         self.template = self.get_scenario_template()
         self.type = self.data['scenario']['type']
-        self.stack_data = stack_data
+        self.metadata = metadata
         self.config = config 
         self.platform = platform
         self.ansible_requirements = self.get_requirements_template()
@@ -49,8 +49,8 @@ class Scenario(object):
         else:
             return 2    # Default number of docker hosts
             
-    def get_stack_data(self):
-        return self.stack_data
+    def get_metadata(self):
+        return self.metadata
     
     def get_template(self):
         return self.template
@@ -157,7 +157,7 @@ class Scenario(object):
                         service_file_created,
                         requirements
                     )
-                    self.stack_data['nodes'].append(str(team_name + '_' + device_name))
+                    self.metadata['nodes'].append(str(team_name + '_' + device_name))
                     service_file_created = True
                     requirements = node.get_requirements()
                     self.write_output(requirements, 'requirements.yaml')
@@ -188,4 +188,4 @@ class Scenario(object):
                         service_file_created,
                         requirements
                     )
-                    self.stack_data['nodes'].append(str(team_name + '_' + device_name))
+                    self.metadata['nodes'].append(str(team_name + '_' + device_name))

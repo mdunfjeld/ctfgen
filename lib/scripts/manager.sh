@@ -16,7 +16,6 @@ ansible-pull -U https://github.com/dunf/ansible-role-ctf-manager local.yml
 while [[ ! -d "/home/ubuntu/output" ]]; do
     sleep 10
     echo $(date) >> /home/ubuntu/bootstrap.log
-        
 done
 
 if [[ -d "/home/ubuntu/output" ]]; then

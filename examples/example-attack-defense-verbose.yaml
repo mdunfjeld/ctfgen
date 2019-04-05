@@ -6,9 +6,6 @@ scenario:
     endDate: 07.01.1970
     startTime: 12:00
     endtime: 23:59
-    teams:
-      - SomeTeamName
-      - AnotherTeam
 
 resources:
   gameserver:                                        
@@ -29,17 +26,7 @@ resources:
           - 53   
       services:
         - apache2       
-        - docker                   
-      user_account:
-        type: employee                           
-        name: John Doe
-        groups:
-          - www-data
-          - employees
-      vulnerabilities:
-        - shellshock
-        - heartbleed
-      
+
   kali:          
     type: node                              
     properties:
@@ -47,11 +34,6 @@ resources:
       - router: management
         subnet: attack_defense_subnet
       public_ip: true
-
-  shellshock:
-    type: vulnerability                   
-    properties:
-      bash_version: x.y.z
 
   apache2:
     type: service
