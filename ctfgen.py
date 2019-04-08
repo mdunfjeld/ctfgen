@@ -1,5 +1,22 @@
 #!/usr/bin/env python
 
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+
+# http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import oyaml as yaml
 import sys
 import os
@@ -135,6 +152,7 @@ def create_args():
     group2 = parser.add_mutually_exclusive_group()
     group1.add_argument('-i', '--inventory', action='store_true', help='Invoke inventory plugin')
     parser.add_argument('--debug', action='store_true', help="Changes filename if set")
+    parser.add_argument('-t', '--transfer', action='store_true', help='Transfer files. May be used together with -i')
     group1.add_argument('-f', '--file', nargs=1, help="Input yaml file")
     parser.add_argument('-r', '--run', action='store_true', help="Launch in openstack")
     group1.add_argument('-d', '--deploy-existing', nargs=1, 
@@ -156,7 +174,8 @@ def main():
         management_nodes = c['management_nodes']
         node_list = c['nodes']
         ip = inventory(node_list, management_nodes)
-        file_transfer('output/', ip)
+        if args.transfer:
+            file_transfer('output/', ip)
         sys.exit(0)
  
     data = OrderedDict()
