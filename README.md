@@ -10,7 +10,7 @@ CTFgen is a platform for creating cyber security testbeds or CTF's based on inpu
 ### Setup
 
 ```
-git clone https://github.com/dunf/master-thesis.git
+git clone https://github.com/dunf/ctfgen.git
 cd master-thesis
 virtualenv3 py3-env
 source py3-env/bin/activate
