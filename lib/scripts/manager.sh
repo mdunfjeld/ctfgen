@@ -39,8 +39,8 @@ if [[ -d "/home/ubuntu/output" ]]; then
     cd /etc/ansible/
     ansible-galaxy install -r /etc/ansible/requirements.yaml
     
-    #for playbook in $(ls /home/ubuntu/output/*.yaml | grep -v requirements.yaml | grep -v hosts.yaml | grep -v heat_stack*); do
-    for playbook in $(ls /home/ubuntu/output/*.yml); do      # Playbooks have .yml extension and all other files have .yaml
+    # Playbooks MUST have .yml extension. All  and all other files have .yaml
+    for playbook in $(ls /home/ubuntu/output/*.yml); do      
         ansible-playbook -i /etc/ansible/hosts.yaml $playbook
     done
 fi

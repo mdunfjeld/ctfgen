@@ -89,18 +89,6 @@ class Scenario(object):
                 return False
         return True
 
-    def check_platform(self, data):   
-        """Check which backend platform is to be used. Added for future needs"""
-        if str(data['options']['cloud-platform'].lower()) == 'heat':
-            platform = 'heat'
-        elif data['options']['cloud-platform'].lower() == "terraform":
-            platform = 'terraform'
-            raise NotImplementedError
-        elif data['options']['cloud-platform'].lower() == "azure":
-            platform = 'azure'
-            raise NotImplementedError
-        return platform
-
     def scenario_type_is_valid(self):
         """ Verify correct scenario type"""
         return True if self.data['scenario']['type'].lower() in \
@@ -140,7 +128,7 @@ class Scenario(object):
             challenge_file = c.get_file()        
             requirements = c.get_requirements()
             port_list = c.get_port_list()
-            
+        self.metadata['nodes'] = self.node_list
         self.write_output(challenge_file, 'docker.yml')   
         self.write_output(requirements, 'requirements.yaml')
 
