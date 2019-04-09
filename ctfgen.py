@@ -37,7 +37,7 @@ from tqdm import tqdm
 def load_config_file(filepath):
     try:
         with open(filepath, 'r') as file:
-            f1 = yaml.load(file)
+            f1 = yaml.load(file, Loader=yaml.FullLoader)
             return f1
     except FileNotFoundError:
         print("File not found")

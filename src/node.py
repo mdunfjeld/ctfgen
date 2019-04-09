@@ -19,7 +19,6 @@ import oyaml as yaml
 from src.data import *
 import sys
 import os
-
 from src.component import Component
 from src.helpers import debug_yaml  # For debugging only
 from src.helpers import prettyprint # For debugging only
@@ -98,7 +97,7 @@ class Node(object):
         return self.requirements
 
     def write_ansible_file(self, template, group):
-        filename = str(group + '.yaml')
+        filename = str(group + '.yml')
         with open(os.path.join('output', filename), 'w') as file:
             f = yaml.dump(template)
             file.write(f)
@@ -106,7 +105,7 @@ class Node(object):
     def initialize_service_template(self, ansible_group):
         """Load ansible template for node"""
         with open(os.path.join('lib', 'templates', 'node_software_template.yaml'), 'r') as file:
-            data = yaml.load(file)
+            data = yaml.load(file, Loader=yaml.FullLoader)
             data[0]['hosts'] = ansible_group
             return data
 

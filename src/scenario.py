@@ -57,7 +57,7 @@ class Scenario(object):
     def get_requirements_template(self):
         filename = str(self.type + '_requirements.yaml')
         with open(os.path.join('lib', 'ansible', filename), 'r') as file:
-            return yaml.load(file)
+            return yaml.load(file, Loader=yaml.FullLoader)
 
     def get_docker_hosts(self):
         if 'docker_hosts' in self.data['scenario']['properties'].keys():
@@ -116,12 +116,12 @@ class Scenario(object):
             print('Invalid scenario type')
             sys.exit(1)
         with open(path) as file:
-            return yaml.load(file)
+            return yaml.load(file, Loader=yaml.FullLoader)
 
     def initialize_software_template(self, ansible_group, stype):
         """Identical to the function in node. Refactoring is needed"""
         with open(os.path.join('lib', 'templates', str(stype) + '-software-template.yaml'), 'r') as file:
-            data = yaml.load(file)
+            data = yaml.load(file, Loader=yaml.FullLoader)
             data[0]['hosts'] = ansible_group
             return data
 
@@ -141,7 +141,7 @@ class Scenario(object):
             requirements = c.get_requirements()
             port_list = c.get_port_list()
             
-        self.write_output(challenge_file, 'docker.yaml')   
+        self.write_output(challenge_file, 'docker.yml')   
         self.write_output(requirements, 'requirements.yaml')
 
 
