@@ -75,7 +75,7 @@ resources:
           - 80
           - 1433
           - 443                   
-      user_account:                      
+      user_accounts:                      
       - username: jdoe             
         name: John Doe
         password: password123
