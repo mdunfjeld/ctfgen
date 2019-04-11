@@ -37,11 +37,14 @@ resources:
           tcp:
           - 22
           - 80
-          - 8080
-          udp:
-          - 53   
+          - 443
+          - 8080 
       services:
-        - apache2       
+        - apache2 
+        - docker    
+      vulnerabilities:
+        - some_vulnerability
+        - another_vulnerability 
 
   kali:          
     type: node                              
@@ -54,7 +57,7 @@ resources:
   apache2:
     type: service
     properties:
-      port: 8000
+      port: 8080
 
   team1:
     type: team

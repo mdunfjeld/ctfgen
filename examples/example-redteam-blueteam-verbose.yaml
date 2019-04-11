@@ -52,7 +52,7 @@ resources:
     DeliveryMethod: email
     file: foo
   
-  ubuntu-node:                                        
+  gameserver:                                        
     type: node                              
     properties:
       flavor: m1.medium                              
@@ -69,12 +69,18 @@ resources:
           udp:
           - 53
       - router: router01
-        subnet: dmz-lan                        
+        subnet: dmz-lan     
+        port_security:
+          tcp:
+          - 80
+          - 1433
+          - 443                   
       user_account:                      
-        type: employee             
+      - username: jdoe             
         name: John Doe
+        password: password123
         groups:                    
-          - www-data
+          - sudo
           - employees
       vulnerability:     
         - shellshock  

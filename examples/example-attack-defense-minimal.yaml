@@ -31,10 +31,19 @@ resources:
       networks:
       - router: management
         subnet: attack_defense_subnet
+        port_security:
+          tcp:
+            - 80
+            - 443
+            - 8080
+            - 8000
       public_ip: true
       services:
       - apache2
       - docker
+      vulnerabilities:
+      - some_vulnerability
+      - another_vulnerability
 
   kali:          
     type: node                              

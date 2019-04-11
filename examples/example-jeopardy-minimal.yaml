@@ -22,9 +22,9 @@ scenario:
     endDate: 07.01.1970
     startTime: 12:00
     endtime: 23:59
-    docker_hosts: 3
 
 resources:
+
   shellshock:                               
     type: challenge                   
     

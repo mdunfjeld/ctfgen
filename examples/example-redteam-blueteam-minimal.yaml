@@ -87,14 +87,14 @@ resources:
     type: team
     properties:
       members:
-      - blue_member1
-      - blue_member2
-      email: foo@bar.com
+      - team1_member1
+      - team1_member2
+      email: team1@example.com
       
   team2:
     type: team
     properties:
       members:
-      - red_member1
-      - red_member2
-      email: foo@bar.com
+      - team2_member1
+      - team2_member2
+      email: team2@example.com

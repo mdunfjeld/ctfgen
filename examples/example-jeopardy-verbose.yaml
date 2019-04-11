@@ -22,23 +22,17 @@ scenario:
     endDate: 07.01.1970
     startTime: 12:00
     endtime: 23:59
+    docker_hosts: 3
 
 resources:
   shellshock:                               
       type: challenge                   
-      properties:          
-        description: Some description of the challenge/vulnerability               
-        flag: flag{This is the flag}
-        prerequisites: 
-        points: 10
+      properties:                  
         port: 1338
+        points: 50
 
   heartbleed:                               
     type: challenge                   
     properties:                         
-      flag: flag{This is another flag}
-      file: /path/to/file
-      prerequisites: 
-        - shellshock
-      points: 10
       port: 1337
+      points: 30
