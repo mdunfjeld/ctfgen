@@ -18,10 +18,10 @@ scenario:
   type: jeopardy    
   properties:
     name: Fancy-name-of-CTF
-    startDate: 01.01.1970
-    endDate: 07.01.1970
-    startTime: 12:00
-    endtime: 23:59
+    start_date: 01.01.1970
+    end_date: 07.01.1970
+    start_time: 12:00
+    end_time: 23:59
 
 resources:
 
