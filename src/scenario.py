@@ -74,11 +74,12 @@ class Scenario(object):
     def get_valid_types(self, stype):
         """Get a list of valid resource objects for the specified scenario type"""
         foo = {
-            'jeopardy': ['challenge'],
-            'attack-defense': ['node', 'vulnerability', 'team', 'agent', 'objective', 'service'],
+            'jeopardy': ['challenge', 'team', 'objective', 'rules', 'phase'],
+            'attack-defense': 
+                ['node', 'vulnerability', 'team', 'agent', 'objective', 'service', 'phase', 'user', 'rules' ],
             'redteam-blueteam': 
-            ['node', 'router', 'service', 'team', 'agent', 'vulnerability', 'user', 'objective', 'rules'],
-            'wargame': ['service', 'vulnerability', 'node']
+                ['node', 'router', 'service', 'team', 'agent', 'vulnerability', 'user', 'objective', 'rules', 'phase'],
+            'wargame': ['challenge', 'team', 'rules', 'objective', 'phase']
         }
         return foo[stype]
 
