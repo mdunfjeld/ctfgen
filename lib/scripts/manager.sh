@@ -26,7 +26,7 @@ apt update
 apt install -y ansible
 
 export HOME=/root
-ansible-pull -U https://github.com/dunf/ansible-role-ctf-manager local.yml
+ansible-pull -U https://github.com/mdunfjeld/ctf-manager local.yml
 
 
 while [[ ! -d "/home/ubuntu/output" ]]; do
