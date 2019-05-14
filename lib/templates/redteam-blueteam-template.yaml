@@ -8,5 +8,6 @@ parameters:
 resources:
   management:
     type: ../lib/templates/management-redteam-blueteam-template.yaml
-
+    properties:
+      key_name: { get_param: key_name }
   

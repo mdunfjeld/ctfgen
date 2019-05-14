@@ -19,7 +19,8 @@ parameters:
 resources:
   management:
     type: ../lib/templates/management-wargame-template.yaml
-
+    properties:
+      key_name: { get_param: key_name }
   docker_servers:
     type: OS::Heat::ResourceGroup
     properties:
