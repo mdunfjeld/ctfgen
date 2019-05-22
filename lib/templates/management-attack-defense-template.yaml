@@ -8,6 +8,14 @@ parameters:
   manager_flavor: {type: string, default: m1.medium}
   key_name: {type: string }
 
+  gameserver_server_name: {type: string, default: gameserver}
+  gameserver_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
+  gameserver_flavor: {type: string, default: m1.medium}
+
+  vpn_server_name: {type: string, default: vpn}
+  vpn_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
+  vpn_flavor: {type: string, default: m1.medium}
+
   management-lan_net_cidr: {type: string, default: 192.168.200.0/24}
   management-lan_net_gateway: {type: string, default: 192.168.200.1}
   management-lan_net_pool_start: {type: string, default: 192.168.200.3}
@@ -44,6 +52,55 @@ resources:
           params:
             __teststring__: "This script should eventually do something useful..."
 
+  gameserver:
+    type: OS::Nova::Server
+    properties:
+      name: {get_param: gameserver_server_name}
+      image: {get_param: gameserver_image}
+      config_drive: true
+      personality:
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
+      metadata: { 'group': 'gameserver' }
+      flavor: {get_param: gameserver_flavor}
+      key_name: {get_param: key_name}
+      networks:
+      - port: {get_resource: gameserver_port0}
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: { get_file: ../scripts/gameserver.sh }
+          params:
+            __teststring__: "placeholder"
+
+  VPN:
+    type: OS::Nova::Server
+    properties:
+      name: {get_param: vpn_server_name}
+      image: {get_param: vpn_image}
+      config_drive: true
+      personality:
+        pubkey: { get_file: ../../output/ansible_deploy_key.pub }
+      metadata: { 'group': 'vpn' }
+      flavor: {get_param: vpn_flavor}
+      key_name: {get_param: key_name}
+      networks:
+      - port: {get_resource: vpn_port0}
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: { get_file: ../scripts/vpn.sh }
+          params:
+            __teststring__: "placeholder"
+
+  vpn_port0:
+    type: OS::Neutron::Port
+    properties:
+      network: {get_resource: management-net}
+      security_groups:
+      - {get_resource: vpn_security_group_management-lan}
+      fixed_ips:
+      - subnet_id: {get_resource: management-lan}
+
   manager_port0:
     type: OS::Neutron::Port
     properties:
@@ -53,6 +110,15 @@ resources:
       fixed_ips:
       - subnet_id: {get_resource: management-lan}
       
+  gameserver_port0:
+    type: OS::Neutron::Port
+    properties:
+      network: {get_resource: management-net}
+      security_groups:
+      - {get_resource: gameserver_security_group_management-lan}
+      fixed_ips:
+      - subnet_id: {get_resource: management-lan}
+    
   manager_security_group_management-lan:
     type: OS::Neutron::SecurityGroup
     properties:
@@ -62,6 +128,24 @@ resources:
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8140, port_range_max: 8140}
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8010}
 
+  gameserver_security_group_management-lan:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: icmp}
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8100 }
+
+  vpn_security_group_management-lan:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      rules:
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: icmp}
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8100 }
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 51820, port_range_max: 51820 }
+      - {remote_ip_prefix: 0.0.0.0/0, protocol: udp, port_range_min: 51820, port_range_max: 51820 }
+      
   management:
     type: OS::Neutron::Router
     properties:

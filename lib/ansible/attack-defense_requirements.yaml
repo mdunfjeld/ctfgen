@@ -1,1 +1,3 @@
 - { src: geerlingguy.ntp, name: geerlingguy.ntp }
+- { src: unxnn.users, name: unxnn.users }
+- { src: githubixx.ansible_role_wireguard, name: githubixx.ansible_role_wireguard}
