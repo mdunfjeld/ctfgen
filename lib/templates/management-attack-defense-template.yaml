@@ -10,11 +10,11 @@ parameters:
 
   gameserver_server_name: {type: string, default: gameserver}
   gameserver_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
-  gameserver_flavor: {type: string, default: m1.medium}
+  gameserver_flavor: {type: string, default: m1.small}
 
   vpn_server_name: {type: string, default: vpn}
   vpn_image: {type: string, default: Ubuntu Server 18.04 LTS (Bionic Beaver) amd64 }
-  vpn_flavor: {type: string, default: m1.medium}
+  vpn_flavor: {type: string, default: m1.small}
 
   management-lan_net_cidr: {type: string, default: 192.168.200.0/24}
   management-lan_net_gateway: {type: string, default: 192.168.200.1}
