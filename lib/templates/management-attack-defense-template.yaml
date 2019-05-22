@@ -97,16 +97,16 @@ resources:
     properties:
       network: {get_resource: management-net}
       security_groups:
-      - {get_resource: vpn_security_group_management-lan}
+      - {get_resource: vpn_security_group }
       fixed_ips:
-      - subnet_id: {get_resource: management-lan}
+      - subnet_id: {get_resource: ctf-lan}
 
   manager_port0:
     type: OS::Neutron::Port
     properties:
       network: {get_resource: management-net}
       security_groups:
-      - {get_resource: manager_security_group_management-lan}
+      - {get_resource: manager_security_group }
       fixed_ips:
       - subnet_id: {get_resource: management-lan}
       
@@ -115,11 +115,11 @@ resources:
     properties:
       network: {get_resource: management-net}
       security_groups:
-      - {get_resource: gameserver_security_group_management-lan}
+      - {get_resource: gameserver_security_group }
       fixed_ips:
       - subnet_id: {get_resource: management-lan}
     
-  manager_security_group_management-lan:
+  manager_security_group:
     type: OS::Neutron::SecurityGroup
     properties:
       rules:
@@ -128,7 +128,7 @@ resources:
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8140, port_range_max: 8140}
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8010}
 
-  gameserver_security_group_management-lan:
+  gameserver_security_group:
     type: OS::Neutron::SecurityGroup
     properties:
       rules:
@@ -136,7 +136,7 @@ resources:
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 22, port_range_max: 22}
       - {remote_ip_prefix: 0.0.0.0/0, protocol: tcp, port_range_min: 8000, port_range_max: 8100 }
 
-  vpn_security_group_management-lan:
+  vpn_security_group:
     type: OS::Neutron::SecurityGroup
     properties:
       rules:
